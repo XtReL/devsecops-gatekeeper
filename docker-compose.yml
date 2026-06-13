@@ -1,0 +1,82 @@
+# docker-compose.yml
+services:
+
+  # 1. База данных для хранения IAM-графов
+  # Изолирована от внешнего мира, доступна только внутри сети secure-mesh
+  gatekeeper-db:
+    image: postgres:15-alpine
+    container_name: gatekeeper-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-spicedb_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev-postgres-password-123}
+      POSTGRES_DB: spicedb
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - secure-mesh
+
+  # 2. Менеджер секретов (Хранилище ключей)
+  gatekeeper-vault:
+    image: hashicorp/vault:1.15
+    container_name: gatekeeper-vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-dev-vault-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault-data:/vault/file
+    networks:
+      - secure-mesh
+
+  # 3. Графовая БД прав (Identity Plane / AuthZed)
+  gatekeeper-iam:
+    image: authzed/spicedb:latest
+    container_name: gatekeeper-iam
+    # Подключаемся к базе gatekeeper-db по внутреннему DNS Docker
+    command: serve --grpc-preshared-key "dev-spicedb-grpc-key-123" --datastore-engine postgres --datastore-conn-uri "postgres://${DB_USER:-spicedb_admin}:${DB_PASSWORD:-dev-postgres-password-123}@gatekeeper-db:5432/spicedb?sslmode=disable"
+    ports:
+      - "50051:50051"
+    depends_on:
+      - gatekeeper-db
+    networks:
+      - secure-mesh
+
+  # 4. Мигратор схемы (Auto-deploy политик)
+  # Одноразовый контейнер, который заливает schema.zed и завершает работу
+  spicedb-schema:
+    image: authzed/zed:latest
+    container_name: gatekeeper-schema-job
+    command: context set local gatekeeper-iam:50051 "dev-spicedb-grpc-key-123" --insecure && zed schema write /iam/schema.zed
+    volumes:
+      - ./iam:/iam
+    depends_on:
+      - gatekeeper-iam
+    networks:
+      - secure-mesh
+
+  # 5. Шлюз безопасности на Go (Edge Filter & Regex Scanner)
+  # Собирается на лету из нашего Dockerfile (Multi-stage build)
+  gatekeeper-api:
+    build: . 
+    container_name: gatekeeper-api
+    ports:
+      - "8080:8080"
+    environment:                        # <--- ДОБАВИТЬ
+      - VAULT_TOKEN=dev-vault-token     # <--- ДОБАВИТЬ
+    env_file:
+      - .env 
+    depends_on:
+      - gatekeeper-iam
+    networks:
+      - secure-mesh
+
+# === АППАРАТНАЯ ИНФРАСТРУКТУРА ===
+
+volumes:
+  vault-data:
+  pg-data:
+
+networks:
+  secure-mesh:
+    driver: bridge

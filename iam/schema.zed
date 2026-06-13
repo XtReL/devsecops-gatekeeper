@@ -1,0 +1,34 @@
+// 1. Базовая сущность: Пользователь системы
+definition user {}
+
+// 2. Сущность: Организация (наш B2B клиент)
+definition organization {
+    relation admin: user
+    relation member: user
+
+    // Права на уровне организации
+    permission view_org = admin + member
+    permission manage_org = admin
+}
+
+// 3. Сущность: Репозиторий (где лежит код, который мы защищаем)
+definition repository {
+    // Привязка репозитория к организации
+    relation org: organization
+    
+    // Прямые роли в репозитории
+    relation reader: user
+    relation writer: user
+    relation admin: user
+
+    // ВЫЧИСЛЯЕМЫЕ ПРАВА (То, что Go-шлюз будет спрашивать у SpiceDB)
+    
+    // Читать отчеты об уязвимостях может читатель, писатель, админ репы ИЛИ админ всей организации
+    permission view_alerts = reader + writer + admin + org->admin
+    
+    // Слить PR (игнорируя мягкие предупреждения) может писатель или админ
+    permission merge_pr = writer + admin + org->admin
+    
+    // Изменить настройки безопасности нашего сканера может только админ
+    permission manage_security = admin + org->admin
+}
