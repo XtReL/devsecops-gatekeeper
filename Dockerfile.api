@@ -1,0 +1,15 @@
+# Слой сборки (Builder)
+FROM golang:alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+# Компилируем статичный бинарник без CGO для максимальной безопасности
+RUN CGO_ENABLED=0 GOOS=linux go build -o /api ./cmd/api/main.go
+
+# Слой исполнения (Runtime)
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /api .
+EXPOSE 8080
+CMD ["./api"]

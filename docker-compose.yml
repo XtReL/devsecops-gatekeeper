@@ -1,82 +1,76 @@
-# docker-compose.yml
 services:
-
-  # 1. База данных для хранения IAM-графов
-  # Изолирована от внешнего мира, доступна только внутри сети secure-mesh
-  gatekeeper-db:
+  # 1. Хранилище графов (Persistent State)
+  postgres:
     image: postgres:15-alpine
-    container_name: gatekeeper-db
     environment:
-      POSTGRES_USER: ${DB_USER:-spicedb_admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev-postgres-password-123}
-      POSTGRES_DB: spicedb
-    volumes:
-      - pg-data:/var/lib/postgresql/data
-    networks:
-      - secure-mesh
-
-  # 2. Менеджер секретов (Хранилище ключей)
-  gatekeeper-vault:
-    image: hashicorp/vault:1.15
-    container_name: gatekeeper-vault
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-dev-vault-token}
-      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: gatekeeper
     ports:
-      - "8200:8200"
+      - "5433:5432"
     volumes:
-      - vault-data:/vault/file
-    networks:
-      - secure-mesh
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
 
-  # 3. Графовая БД прав (Identity Plane / AuthZed)
-  gatekeeper-iam:
+  # 2.1 Эфемерный мигратор графа (Init Container)
+  spicedb-migrate:
     image: authzed/spicedb:latest
-    container_name: gatekeeper-iam
-    # Подключаемся к базе gatekeeper-db по внутреннему DNS Docker
-    command: serve --grpc-preshared-key "dev-spicedb-grpc-key-123" --datastore-engine postgres --datastore-conn-uri "postgres://${DB_USER:-spicedb_admin}:${DB_PASSWORD:-dev-postgres-password-123}@gatekeeper-db:5432/spicedb?sslmode=disable"
+    command: datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 2.2 Графовый движок (ReBAC Zanzibar)
+  spicedb:
+    image: authzed/spicedb:latest
+    command: serve --grpc-preshared-key "somerandomkeyhere" --datastore-engine postgres --datastore-conn-uri "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"
     ports:
       - "50051:50051"
     depends_on:
-      - gatekeeper-db
-    networks:
-      - secure-mesh
+      spicedb-migrate:
+        condition: service_completed_successfully
 
-  # 4. Мигратор схемы (Auto-deploy политик)
-  # Одноразовый контейнер, который заливает schema.zed и завершает работу
-  spicedb-schema:
-    image: authzed/zed:latest
-    container_name: gatekeeper-schema-job
-    command: context set local gatekeeper-iam:50051 "dev-spicedb-grpc-key-123" --insecure && zed schema write /iam/schema.zed
-    volumes:
-      - ./iam:/iam
-    depends_on:
-      - gatekeeper-iam
-    networks:
-      - secure-mesh
+  # 3. Кэш токенов IAT и Rate Limits
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
 
-  # 5. Шлюз безопасности на Go (Edge Filter & Regex Scanner)
-  # Собирается на лету из нашего Dockerfile (Multi-stage build)
-  gatekeeper-api:
-    build: . 
-    container_name: gatekeeper-api
+  # 4. Транспортный слой сканеров (Event Broker)
+  nats:
+    image: nats:2.9-alpine
+    command: ["-js"] 
+    ports:
+      - "4222:4222"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     ports:
       - "8080:8080"
-    environment:                        # <--- ДОБАВИТЬ
-      - VAULT_TOKEN=dev-vault-token     # <--- ДОБАВИТЬ
-    env_file:
-      - .env 
     depends_on:
-      - gatekeeper-iam
-    networks:
-      - secure-mesh
+      - nats
+      - postgres
+      - spicedb
+    volumes:
+      # [SECURITY] Прокидываем ключ в режиме Read-Only (ro), не вшивая его в сам образ
+      - ./key.pem:/app/key.pem:ro
 
-# === АППАРАТНАЯ ИНФРАСТРУКТУРА ===
+  scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile.scanner
+    depends_on:
+      - nats
+      - postgres
+    volumes:
+      - ./key.pem:/app/key.pem:ro
 
 volumes:
-  vault-data:
-  pg-data:
-
-networks:
-  secure-mesh:
-    driver: bridge
+  pg_data:

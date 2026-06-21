@@ -1,3 +1,4 @@
+// internal/iam/spicedb.go
 package iam
 
 import (
@@ -15,39 +16,42 @@ type SpiceDBClient struct {
 	client *authzed.Client
 }
 
-// Конструктор: подключаемся к SpiceDB внутри сети Docker
-func NewSpiceDBClient(token string) (*SpiceDBClient, error) {
+func NewSpiceDBClient(endpoint, token string) (*SpiceDBClient, error) {
+	// [SECURITY NOTE]: insecure используется только для локального docker-compose.
 	client, err := authzed.NewClient(
-		"gatekeeper-iam:50051", // <--- ИЗМЕНЕНИЕ ЗДЕСЬ (было "localhost:50051")
+		endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpcutil.WithInsecureBearerToken(token),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SpiceDB: %w", err)
+		return nil, err
 	}
 	return &SpiceDBClient{client: client}, nil
 }
 
-// CheckPermission спрашивает базу: "Имеет ли право Subject сделать Permission над Resource?"
-func (s *SpiceDBClient) CheckPermission(ctx context.Context, resourceType, resourceID, permission, subjectType, subjectID string) (bool, error) {
-	resp, err := s.client.PermissionsServiceClient.CheckPermission(ctx, &pb.CheckPermissionRequest{
-		Resource: &pb.ObjectReference{
-			ObjectType: resourceType,
-			ObjectId:   resourceID,
+// CheckPermission проверяет права с учетом изоляции тенанта
+func (s *SpiceDBClient) CheckPermission(ctx context.Context, user, repo string) (bool, error) {
+	req := &pb.CheckPermissionRequest{
+		Consistency: &pb.Consistency{
+			Requirement: &pb.Consistency_FullyConsistent{FullyConsistent: true},
 		},
-		Permission: permission,
+		Resource: &pb.ObjectReference{
+			ObjectType: "repository", // Строго совпадает с definition в schema.zed
+			ObjectId:   repo,         // Сюда прилетит "core-api"
+		},
+		Permission: "merge_pr", // Строго совпадает с permission в schema.zed
 		Subject: &pb.SubjectReference{
 			Object: &pb.ObjectReference{
-				ObjectType: subjectType,
-				ObjectId:   subjectID,
+				ObjectType: "user", // Строго совпадает с definition в schema.zed
+				ObjectId:   user,   // Сюда прилетит "madi"
 			},
 		},
-	})
-
-	if err != nil {
-		return false, fmt.Errorf("spicedb check error: %w", err)
 	}
 
-	// Возвращаем true, только если ответ строго "HAS_PERMISSION"
+	resp, err := s.client.CheckPermission(ctx, req)
+	if err != nil {
+		return false, fmt.Errorf("spicedb check failed: %w", err)
+	}
+
 	return resp.Permissionship == pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION, nil
 }

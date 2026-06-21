@@ -1,0 +1,20 @@
+# Слой сборки Go-кода
+FROM golang:alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /scanner ./cmd/scanner/main.go
+
+# Слой исполнения
+FROM alpine:latest
+# Устанавливаем только git, он есть в базовых репозиториях Alpine
+RUN apk add --no-cache git
+
+# Копируем готовый Linux-бинарник Gitleaks прямо с вашего диска в контейнер
+COPY gitleaks /usr/local/bin/gitleaks
+RUN chmod +x /usr/local/bin/gitleaks
+
+WORKDIR /app
+COPY --from=builder /scanner .
+CMD ["./scanner"]

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatekeeper-scanner
+  namespace: devsecops-platform
+  labels:
+    app: gatekeeper-scanner
+spec:
+  # Начинаем с 3 сканеров. Kubernetes будет сам распределять нагрузку.
+  replicas: 3 
+  selector:
+    matchLabels:
+      app: gatekeeper-scanner
+  template:
+    metadata:
+      labels:
+        app: gatekeeper-scanner
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+
+      containers:
+        - name: scanner-worker
+          image: ghcr.io/your-github-username/devsecops-gatekeeper-scanner:latest
+          imagePullPolicy: IfNotPresent
+          
+          # Сканеру не нужны открытые порты, он сам "тянет" задачи из NATS
+          
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          # Сканирование (Gitleaks) — это CPU-bound задача. Выделяем больше процессора.
+          resources:
+            limits:
+              cpu: "1000m" # 1 полное ядро
+              memory: "1Gi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+
+          env:
+            - name: NATS_URL
+              value: "nats://nats-service:4222"
+            - name: DB_CONN_STR
+              valueFrom:
+                secretKeyRef:
+                  name: gatekeeper-secrets
+                  key: database-url

@@ -14,3 +14,11 @@ logs/
 bin/
 __pycache__/
 *.exe
+
+# Secrets and Local Configurations
+.env
+raw-secret.yaml
+key.pem
+
+# Binaries
+*.exe

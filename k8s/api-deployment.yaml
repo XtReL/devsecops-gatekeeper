@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatekeeper-api
+  namespace: devsecops-platform
+  labels:
+    app: gatekeeper-api
+spec:
+  replicas: 2 # Изначально поднимаем 2 пода для обеспечения High Availability (HA)
+  selector:
+    matchLabels:
+      app: gatekeeper-api
+  template:
+    metadata:
+      labels:
+        app: gatekeeper-api
+    spec:
+      # Безопасность: Контейнер не должен работать под пользователем root
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+
+      containers:
+        - name: api-gateway
+          # Образ, который автоматически собирает наш настроенный CI/CD пайплайн
+          image: ghcr.io/your-github-username/devsecops-gatekeeper-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+
+          # Изоляция файловой системы контейнера (Защита от внедрения вредоносных бинарников)
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          # Ограничение ресурсов (Защита кластера от утечек памяти в коде)
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+          # Проверки работоспособности (Самолечение K8s при зависании Go-процесса)
+          livenessProbe:
+            httpGet:
+              path: /api/v1/findings?repo=health-check # Используем существующий эндпоинт для пинга
+              port: 8080
+              httpHeaders:
+                - name: X-User-Login
+                  value: "health-monitor"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/findings?repo=health-check
+              port: 8080
+              httpHeaders:
+                - name: X-User-Login
+                  value: "health-monitor"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          # Переменные окружения (Инъекция секретов из защищенного хранилища K8s)
+          env:
+            - name: DB_CONN_STR
+              valueFrom:
+                secretKeyRef:
+                  name: gatekeeper-secrets
+                  key: database-url
+            - name: STRIPE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gatekeeper-secrets
+                  key: stripe-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatekeeper-api-service
+  namespace: devsecops-platform
+spec:
+  selector:
+    app: gatekeeper-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP # Сервис доступен только внутри кластера. Внешний трафик пустим только через Ingress.

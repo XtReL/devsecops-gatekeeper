@@ -1,188 +1,295 @@
 package main
 
 import (
-	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"os"
 
-	"devsecops-gatekeeper/internal/iam"
-	"devsecops-gatekeeper/internal/middleware"
+	"devsecops-gatekeeper/internal/billing"
+	"devsecops-gatekeeper/internal/broker"
 
-	"github.com/go-chi/chi/v5"
+	pb "github.com/authzed/authzed-go/proto/authzed/api/v1"
+	"github.com/authzed/authzed-go/v1"
+	"github.com/authzed/grpcutil"
+	_ "github.com/lib/pq"
+	"github.com/nats-io/nats.go"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Обновленная структура: добавили FullName (например "XtReL/webhook") и HeadCommit
-type GitHubPushPayload struct {
-	Repository struct {
-		Name     string `json:"name"`
-		FullName string `json:"full_name"`
-	} `json:"repository"`
-	Sender struct {
-		Login string `json:"login"`
-	} `json:"sender"`
-	Commits []struct {
-		Added    []string `json:"added"`
-		Modified []string `json:"modified"`
-	} `json:"commits"`
-	HeadCommit struct {
-		ID string `json:"id"`
-	} `json:"head_commit"`
+type Gateway struct {
+	js    nats.JetStreamContext
+	spice *authzed.Client
+	db    *sql.DB
 }
 
-// Новая функция: Отправка комментария через GitHub API
-func leaveGitHubComment(repoFullName, commitSha, message string) {
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		log.Println("Warning: GITHUB_TOKEN is empty, cannot leave comment.")
-		return
-	}
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/commits/%s/comments", repoFullName, commitSha)
-
-	payload := map[string]string{"body": message}
-	bodyBytes, _ := json.Marshal(payload)
-
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Failed to send GitHub comment: %v", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 201 {
-		log.Println("✅ Successfully posted alert comment to GitHub PR/Commit!")
-	} else {
-		log.Printf("⚠️ GitHub API returned status: %d", resp.StatusCode)
-	}
+type FindingResponse struct {
+	ID         int    `json:"id"`
+	RepoName   string `json:"repo_name"`
+	RuleID     string `json:"rule_id"`
+	FilePath   string `json:"file_path"`
+	Secret     string `json:"secret_masked"`
+	Status     string `json:"status"`
+	DetectedAt string `json:"detected_at"`
 }
 
-func handleWebhook(authClient *iam.SpiceDBClient) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		// --- ПАТЧ: ПЕРЕХВАТ СИСТЕМНОГО PING-ЗАПРОСА ---
-		if r.Header.Get("X-GitHub-Event") == "ping" {
-			log.Println("Gatekeeper: GitHub Ping detected. Handshake successful.")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, "Gatekeeper: Ping accepted. Zero Trust perimeter active.")
-			return
-		}
-		// ----------------------------------------------
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Internal Error", http.StatusInternalServerError)
-			return
-		}
-
-		var payload GitHubPushPayload
-		if err := json.Unmarshal(body, &payload); err != nil {
-			http.Error(w, "Bad Request: Invalid JSON", http.StatusBadRequest)
-			return
-		}
-
-		user := payload.Sender.Login
-		repo := payload.Repository.Name
-		repoFullName := payload.Repository.FullName
-		commitID := payload.HeadCommit.ID
-
-		hasPermission, err := authClient.CheckPermission(r.Context(), "repository", repo, "merge_pr", "user", user)
-		if err != nil || !hasPermission {
-			log.Printf("Access Denied: %s tried to access %s", user, repo)
-			http.Error(w, "Forbidden: Missing IAM Permissions", http.StatusForbidden)
-			return
-		}
-
-		var filesToScan []string
-		for _, commit := range payload.Commits {
-			filesToScan = append(filesToScan, commit.Added...)
-			filesToScan = append(filesToScan, commit.Modified...)
-		}
-
-		// Сканирование контента
-		for _, file := range filesToScan {
-			if file == "config/database.yml" || file == "config.js" {
-
-				// ФОРМИРУЕМ И ОТПРАВЛЯЕМ КОММЕНТАРИЙ
-				alertMsg := fmt.Sprintf("🚨 **GATEKEEPER SECURITY BLOCK** 🚨\n\nВнимание, @%s! Был заблокирован коммит из-за утечки данных.\nОбнаружен хардкод секрета/пароля в файле `%s`.\n\n*Пожалуйста, удалите секрет из кода, используйте переменные окружения и сделайте новый коммит.*", user, file)
-				leaveGitHubComment(repoFullName, commitID, alertMsg)
-
-				w.WriteHeader(http.StatusForbidden)
-				fmt.Fprintf(w, "Forbidden: SECURITY BREACH in %s", file)
-				return
-			}
-		}
-
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "Gatekeeper: Push authorized and scanned. Status: CLEAN.")
-	}
-}
-
-func fetchSecretsFromVault() (string, string, error) {
-	vaultToken := os.Getenv("VAULT_TOKEN")
-	vaultAddr := "http://gatekeeper-vault:8200"
-
-	req, err := http.NewRequest("GET", vaultAddr+"/v1/secret/data/gatekeeper", nil)
-	if err != nil {
-		return "", "", err
-	}
-	req.Header.Set("X-Vault-Token", vaultToken)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("Vault returned status: %d", resp.StatusCode)
-	}
-
-	body, _ := io.ReadAll(resp.Body)
-	var result map[string]interface{}
-	json.Unmarshal(body, &result)
-
-	data := result["data"].(map[string]interface{})["data"].(map[string]interface{})
-	webhookSecret := data["WEBHOOK_SECRET"].(string)
-	spiceDBKey := data["SPICEDB_PRESHARED_KEY"].(string)
-
-	return webhookSecret, spiceDBKey, nil
+type UpdateStatusRequest struct {
+	FindingID int    `json:"finding_id"`
+	Status    string `json:"status"`
 }
 
 func main() {
-	log.Println("Locking onto HashiCorp Vault...")
-	webhookSecret, spicedbKey, err := fetchSecretsFromVault()
+	log.Println("[BOOT] Запуск API Gateway...")
+
+	// 1. Подключение к асинхронной шине событий NATS
+	nc, err := nats.Connect("nats://nats:4222")
 	if err != nil {
-		log.Fatalf("FATAL: Failed to fetch dynamic secrets from Vault: %v", err)
+		log.Fatalf("[FATAL] NATS недоступен: %v", err)
 	}
-	log.Println("Vault sync complete. Secrets injected into RAM.")
+	defer nc.Close()
 
-	authClient, err := iam.NewSpiceDBClient(spicedbKey)
+	js, err := nc.JetStream()
 	if err != nil {
-		log.Fatalf("FATAL: SpiceDB connection failed: %v", err)
+		log.Fatalf("[FATAL] JetStream не инициализирован: %v", err)
 	}
 
-	r := chi.NewRouter()
+	// 2. Инициализация gRPC клиента авторизации SpiceDB с защитой транспортного слоя
+	spiceClient, err := authzed.NewClient(
+		"spicedb:50051",
+		grpcutil.WithInsecureBearerToken("somerandomkeyhere"),
+		grpc.WithTransportCredentials(insecure.NewCredentials()), // Безопасное явное указание plaintext-режима для локального контура
+	)
+	if err != nil {
+		log.Fatalf("[FATAL] SpiceDB недоступен: %v", err)
+	}
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Gatekeeper is active. Zero Trust enclaved.\n"))
+	// 3. Подключение к реляционной СУБД PostgreSQL (Изолированный порт хоста)
+	dbConn, err := sql.Open("postgres", "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable")
+	if err != nil {
+		log.Fatalf("[FATAL] Ошибка подключения к БД: %v", err)
+	}
+	defer dbConn.Close()
+
+	gw := &Gateway{js: js, spice: spiceClient, db: dbConn}
+
+	// Регистрация детерминированных HTTP-маршрутов
+	mux := http.NewServeMux()
+	mux.HandleFunc("/webhook", gw.HandleWebhook)
+	mux.HandleFunc("/api/v1/findings", gw.HandleGetFindings)
+	mux.HandleFunc("/api/v1/findings/status", gw.HandleUpdateStatus)
+
+	// Регистрация эндпоинта для Stripe вебхуков
+	// Секрет временно захардкожен для локального тестирования (в проде берется из .env)
+	stripeSecret := "whsec_test_secret"
+	mux.HandleFunc("/api/v1/billing/stripe", billing.HandleStripeWebhook(dbConn, stripeSecret))
+
+	log.Println("[READY] API Gateway развернут на порту 8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatalf("[FATAL] Сбой сервера: %v", err)
+	}
+}
+
+// HandleGetFindings осуществляет санкционированную выборку алертов ИБ
+func (gw *Gateway) HandleGetFindings(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user := r.Header.Get("X-User-Login")
+	repo := r.URL.Query().Get("repo")
+
+	if user == "" || repo == "" {
+		http.Error(w, "Параметры X-User-Login и repo обязательны", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[AUTHZ] Проверка прав: может ли %s читать отчеты %s...", user, repo)
+
+	// Детерминированная проверка отношений (Zero Trust Isolation)
+	resp, err := gw.spice.CheckPermission(r.Context(), &pb.CheckPermissionRequest{
+		Resource:   &pb.ObjectReference{ObjectType: "repository", ObjectId: repo},
+		Permission: "writer",
+		Subject: &pb.SubjectReference{
+			Object: &pb.ObjectReference{ObjectType: "user", ObjectId: user},
+		},
 	})
 
-	r.Post("/api/v1/scan", middleware.VerifyGitHubSignature(webhookSecret, handleWebhook(authClient)))
-
-	port := ":8080"
-	log.Printf("Starting Gatekeeper on port %s...\n", port)
-	if err := http.ListenAndServe(port, r); err != nil {
-		log.Fatalf("Server crashed: %v", err)
+	if err != nil {
+		log.Printf("[ERROR] Сбой проверки SpiceDB: %v", err)
+		http.Error(w, "Внутренняя ошибка авторизации", http.StatusInternalServerError)
+		return
 	}
+
+	if resp.Permissionship != pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
+		log.Printf("[SECURITY ALERT] 🛑 Отказ в доступе! Пользователь %s пытался прочитать отчеты репо %s", user, repo)
+		http.Error(w, "Доступ запрещен", http.StatusForbidden)
+		return
+	}
+
+	log.Printf("[DB] Доступ разрешен. Выборка алертов для репозитория: %s", repo)
+
+	// Защита от SQL-инъекций через строго параметризованное связывание переменных
+	rows, err := gw.db.Query("SELECT id, repo_name, rule_id, file_path, secret_masked, status, to_char(detected_at, 'YYYY-MM-DD HH24:MI:SS') FROM scan_findings WHERE repo_name = $1 ORDER BY id DESC", repo)
+	if err != nil {
+		log.Printf("[ERROR] Сбой SQL запроса: %v", err)
+		http.Error(w, "Ошибка чтения данных", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var findings []FindingResponse
+	for rows.Next() {
+		var f FindingResponse
+		if err := rows.Scan(&f.ID, &f.RepoName, &f.RuleID, &f.FilePath, &f.Secret, &f.Status, &f.DetectedAt); err != nil {
+			log.Printf("[ERROR] Ошибка сканирования строки: %v", err)
+			continue
+		}
+		findings = append(findings, f)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(findings)
+}
+
+// HandleWebhook принимает события от VCS систем и инициирует асинхронный пайплайн
+func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		Installation struct {
+			ID int `json:"id"`
+		} `json:"installation"`
+		Repository struct {
+			Name string `json:"name"`
+		} `json:"repository"`
+		Sender struct {
+			Login string `json:"login"`
+		} `json:"sender"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	// 1. ПРОВЕРКА АВТОРИЗАЦИИ (Zero Trust)
+	resp, err := gw.spice.CheckPermission(r.Context(), &pb.CheckPermissionRequest{
+		Resource:   &pb.ObjectReference{ObjectType: "repository", ObjectId: payload.Repository.Name},
+		Permission: "writer",
+		Subject: &pb.SubjectReference{
+			Object: &pb.ObjectReference{ObjectType: "user", ObjectId: payload.Sender.Login},
+		},
+	})
+
+	if err != nil || resp.Permissionship != pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
+		log.Printf("[SECURITY] Отказ доступа: %s -> %s", payload.Sender.Login, payload.Repository.Name)
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// [NEW] 2. ФИНАНСОВЫЙ КОНТРОЛЬ: Блокировка неоплаченного трафика (Economic Denial of Service Protection)
+	var subStatus string
+	tenantID := fmt.Sprintf("%d", payload.Installation.ID)
+
+	err = gw.db.QueryRow("SELECT status FROM subscriptions WHERE tenant_id = $1", tenantID).Scan(&subStatus)
+
+	if err == sql.ErrNoRows || subStatus != "active" {
+		log.Printf("[BILLING] ⛔ Отказ в обслуживании: неоплаченная/отсутствующая подписка для Tenant %s", tenantID)
+		http.Error(w, "Payment Required", http.StatusPaymentRequired) // HTTP 402
+		return
+	}
+
+	// 3. МАРШРУТИЗАЦИЯ ЗАДАЧИ
+	task := broker.TaskPayload{
+		TenantID: tenantID,
+		RepoName: payload.Repository.Name,
+	}
+
+	taskData, _ := json.Marshal(task)
+
+	// Динамическое декларирование Stream-конфигурации
+	_, _ = gw.js.AddStream(&nats.StreamConfig{
+		Name:     "SAST_PIPELINE",
+		Subjects: []string{"sast.scan.>"},
+	})
+
+	_, err = gw.js.Publish("sast.scan."+task.TenantID, taskData)
+	if err != nil {
+		log.Printf("[ERROR] Ошибка публикации в NATS: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Задача успешно принята в очередь сканирования")
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte(`{"status":"accepted"}`))
+}
+
+// HandleUpdateStatus реализует защищенную от BOLA/IDOR модификацию состояний алертов
+func (gw *Gateway) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req UpdateStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	user := r.Header.Get("X-User-Login")
+	if user == "" {
+		http.Error(w, "X-User-Login обязателен", http.StatusUnauthorized)
+		return
+	}
+
+	// 1. ПРЕДОТВРАЩЕНИЕ BOLA: Защитный перехват контекста объекта перед изменением состояния
+	var repoName string
+	var tenantID string
+	err := gw.db.QueryRow("SELECT repo_name, tenant_id FROM scan_findings WHERE id = $1", req.FindingID).Scan(&repoName, &tenantID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Уязвимость не найдена", http.StatusNotFound)
+		} else {
+			log.Printf("[ERROR] Ошибка чтения метаданных: %v", err)
+			http.Error(w, "Внутренняя ошибка", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// 2. СВЯЗЫВАНИЕ КОНТЕКСТА С ЗОНОЙ ДОВЕРИЯ (SpiceDB Validation)
+	log.Printf("[AUTHZ] Проверка прав на модификацию статуса: %s -> %s (Tenant: %s)", user, repoName, tenantID)
+	resp, err := gw.spice.CheckPermission(r.Context(), &pb.CheckPermissionRequest{
+		Resource:   &pb.ObjectReference{ObjectType: "repository", ObjectId: repoName},
+		Permission: "writer",
+		Subject: &pb.SubjectReference{
+			Object: &pb.ObjectReference{ObjectType: "user", ObjectId: user},
+		},
+	})
+
+	if err != nil || resp.Permissionship != pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
+		log.Printf("[SECURITY ALERT] 🚨 Попытка несанкционированного изменения статуса! Пользователь %s -> Алерт %d", user, req.FindingID)
+		http.Error(w, "Доступ запрещен", http.StatusForbidden)
+		return
+	}
+
+	// 3. ИСПОЛНЕНИЕ КОМАНДЫ (Fail-Secure Execution)
+	query := "UPDATE scan_findings SET status = $1 WHERE id = $2"
+	_, err = gw.db.Exec(query, req.Status, req.FindingID)
+	if err != nil {
+		log.Printf("[ERROR] Ошибка обновления статуса в БД: %v", err)
+		http.Error(w, "Ошибка обновления", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[AUDIT] ✅ Пользователь %s изменил статус алерта %d (%s) на %s", user, req.FindingID, repoName, req.Status)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"success"}`))
 }
