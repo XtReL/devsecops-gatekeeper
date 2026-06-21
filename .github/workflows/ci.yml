@@ -12,7 +12,7 @@ on:
 env:
   REGISTRY: ghcr.io
   # Имя образа формируется из имени владельца и репозитория (например, madi/devsecops-gatekeeper)
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: xtrel/devsecops-gatekeeper
 
 jobs:
   build-and-push:
