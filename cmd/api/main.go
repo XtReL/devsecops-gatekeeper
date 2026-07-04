@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"devsecops-gatekeeper/internal/billing"
 	"devsecops-gatekeeper/internal/broker"
@@ -111,7 +112,15 @@ func main() {
 	mux.HandleFunc("/api/v1/billing/stripe", webhookController.HandleStripeWebhook)
 
 	log.Printf("[READY] API Gateway развернут на порту %s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second, // Защита от зависания при чтении
+		WriteTimeout: 10 * time.Second, // Защита от зависания при отдаче
+		IdleTimeout:  60 * time.Second, // Защита от долгих Keep-Alive
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("[FATAL] Сбой сервера: %v", err)
 	}
 }
@@ -176,6 +185,7 @@ func (gw *Gateway) HandleGetFindings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	// #nosec G117 - Поле содержит публичные маскированные данные, а не сам секрет
 	json.NewEncoder(w).Encode(findings)
 }
 

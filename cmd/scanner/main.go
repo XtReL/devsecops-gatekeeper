@@ -66,7 +66,7 @@ func main() {
 		scanID := fmt.Sprintf("scan-%s-%d", task.TenantID, time.Now().UnixNano())
 		scanDir := filepath.Join(os.TempDir(), "gatekeeper-scans", scanID)
 
-		if err := os.MkdirAll(scanDir, 0755); err != nil {
+		if err := os.MkdirAll(scanDir, 0750); err != nil {
 			log.Printf("[ERROR] Не удалось создать папку: %v", err)
 			m.Nak()
 			return
@@ -128,6 +128,7 @@ func main() {
 
 // parseReport читает JSON от Gitleaks, сохраняет в БД и открывает Issue в GitHub
 func parseReport(reportPath string, task broker.TaskPayload, database *db.Database, ghClient *github.Client) {
+	// #nosec G304 - Имя файла отчета формируется детерминированно без участия пользователя
 	reportData, err := os.ReadFile(reportPath)
 	if err != nil {
 		log.Printf("[ERROR] Не удалось прочитать отчет: %v", err)

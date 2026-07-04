@@ -24,6 +24,7 @@ type Client struct {
 
 // NewClient читает .pem файл с диска и загружает RSA ключ в оперативную память
 func NewClient(appID, pemPath string) (*Client, error) {
+	// #nosec G304 - Путь к PEM-ключу изолирован в доверенном контуре среды
 	pemData, err := os.ReadFile(pemPath)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка чтения ключа: %v", err)
