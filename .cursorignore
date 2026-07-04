@@ -1,0 +1,25 @@
+# [SECURITY] Криптография и Секреты (Zero Trust)
+.env*
+*.pem
+*.key
+*.crt
+secrets/
+credentials.json
+
+# [INFRA] Состояние баз данных и брокеров
+postgres-data/
+spicedb-data/
+nats-data/
+*.sql
+*.db
+
+# [EXEC] Эфемерные директории сканера (Sandboxing)
+/tmp/
+gatekeeper-scans/
+*-report.json
+
+# [SYSTEM] Бинарные файлы и кэш
+vendor/
+bin/
+*.exe
+.DS_Store

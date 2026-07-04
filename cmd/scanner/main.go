@@ -12,8 +12,9 @@ import (
 	"time"
 
 	"devsecops-gatekeeper/internal/broker"
+	"devsecops-gatekeeper/internal/config"
 	"devsecops-gatekeeper/internal/db"
-	"devsecops-gatekeeper/internal/github" // НОВЫЙ ИМПОРТ
+	"devsecops-gatekeeper/internal/github"
 
 	"github.com/nats-io/nats.go"
 )
@@ -21,25 +22,26 @@ import (
 func main() {
 	log.Println("[BOOT] Запуск SAST-сканера (Execution Node)...")
 
+	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("[FATAL] invalid configuration: %v", err)
+	}
+
 	// 1. Инициализация базы данных PostgreSQL
-	connStr := "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"
-	database, err := db.InitDB(connStr)
+	database, err := db.InitDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("[FATAL] Ошибка подключения к БД: %v", err)
 	}
 
 	// 2. ИНИЦИАЛИЗАЦИЯ GITHUB КЛИЕНТА (Zero Trust: используем локальный .pem ключ)
-	// ВАЖНО: Вставьте сюда ваш App ID из настроек GitHub!
-	appID := "4051135"
-
-	ghClient, err := github.NewClient(appID, "./key.pem")
+	ghClient, err := github.NewClient(cfg.GitHubAppID, cfg.GitHubPrivateKeyPath)
 	if err != nil {
 		log.Fatalf("[FATAL] Ошибка инициализации GitHub: %v", err)
 	}
 	log.Println("[BOOT] GitHub App клиент успешно загружен")
 
 	// 3. Подключение к NATS
-	nc, err := nats.Connect("nats://nats:4222")
+	nc, err := nats.Connect(cfg.NATSURL)
 	if err != nil {
 		log.Fatalf("[FATAL] Ошибка NATS: %v", err)
 	}
@@ -75,9 +77,9 @@ func main() {
 			log.Printf("[CLEANUP] 🧹 Директория %s физически уничтожена.", scanDir)
 		}()
 
-		// [SECURITY NOTE]: В MVP хардкодим тестовый репозиторий с уязвимостями
-		targetURL := "https://github.com/gitleaks/gitleaks.git"
-		log.Printf("[EXEC] ⏳ Клонирование %s...", targetURL)
+		// [PROD] Динамическое определение цели на основе метаданных задачи
+		targetURL := fmt.Sprintf("https://github.com/XtReL/%s.git", task.RepoName)
+		log.Printf("[EXEC] ⏳ Клонирование боевого репозитория %s...", targetURL)
 
 		cloneCmd := exec.Command("git", "clone", "--depth", "1", targetURL, scanDir)
 		if output, err := cloneCmd.CombinedOutput(); err != nil {

@@ -7,6 +7,8 @@ require (
 	github.com/authzed/grpcutil v0.0.0-20260105210157-e237581949c2
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/go-github/v60 v60.0.0
+	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.12.3
 	github.com/nats-io/nats.go v1.52.0
 	github.com/stripe/stripe-go/v76 v76.25.0
@@ -22,6 +24,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/jzelinskie/stringz v0.0.3 // indirect

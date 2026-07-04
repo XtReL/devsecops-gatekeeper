@@ -1,12 +1,32 @@
+// Базовый субъект системы
 definition user {}
 
+// Тенант (Организация/Рабочее пространство), создаваемый после оплаты в Stripe
+definition tenant {
+    relation admin: user
+    relation member: user
+    
+    // Администратор автоматически имеет права участника
+    permission view_dashboard = admin + member
+    permission manage_billing = admin
+}
+
+// Защищаемый ресурс (Репозиторий с кодом/отчетами сканирования)
 definition repository {
+    // Жесткая привязка к родительскому тенанту
+    relation parent_tenant: tenant
+    
+    // Прямые назначения (Точечные права)
     relation reader: user
     relation writer: user
-    relation admin: user
 
-    // Композиция прав (ReBAC)
-    permission read = reader + writer + admin
-    permission push = writer + admin
-    permission merge_pr = writer + admin
+    // Резолюция прав: вычисление доступа на лету (Graph Traversal)
+    // Читать могут прямые читатели, прямые писатели, а также ВСЕ участники тенанта
+    permission read = reader + writer + parent_tenant->member + parent_tenant->admin
+    
+    // Писать могут только прямые писатели и администраторы тенанта
+    permission write = writer + parent_tenant->admin
+    
+    // Удалять репозиторий может только администратор тенанта
+    permission delete = parent_tenant->admin
 }

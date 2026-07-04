@@ -58,6 +58,8 @@ services:
       - nats
       - postgres
       - spicedb
+    environment: # [SECURITY] Инжектируем секрет из .env хоста в изолированную память контейнера
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
     volumes:
       # [SECURITY] Прокидываем ключ в режиме Read-Only (ro), не вшивая его в сам образ
       - ./key.pem:/app/key.pem:ro

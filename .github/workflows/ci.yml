@@ -1,58 +1,72 @@
-name: DevSecOps Gatekeeper CI
+name: Security & Integration Pipeline
 
-# Пайплайн запускается при каждом пуше в ветку main
 on:
   push:
-    branches:
-      - main
+    branches: [ main, master ]
   pull_request:
-    branches:
-      - main
+    branches: [ main, master ]
 
-env:
-  REGISTRY: ghcr.io
-  # Имя образа формируется из имени владельца и репозитория (например, madi/devsecops-gatekeeper)
-  IMAGE_NAME: xtrel/devsecops-gatekeeper
+permissions:
+  contents: read
 
 jobs:
-  build-and-push:
+  audit-and-lint:
+    name: Security Audit & Quality Gate
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-      - name: Checkout repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
+      - name: Initialize Go Environment
+        uses: actions/setup-go@v5
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # GitHub автоматически выдает токен для текущего репо, можно использовать его вместо ручного GHCR_PAT
+          go-version: '1.22'
+          cache: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # 1. Сканирование на утечку секретов
+      - name: GitGuardian Shield Scan
+        uses: GitGuardian/ggshield-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
-      # Сборка и пуш API Gateway
-      - name: Build and push API image
-        uses: docker/build-push-action@v5
+      # 2. Превентивный ИБ-анализ кода (SAST)
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
         with:
-          context: .
-          file: ./Dockerfile.api
-          push: ${{ github.event_name != 'pull_request' }} # Пушим только при мердже в main
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          args: '-exclude=G104,G108 -fmt=json -out=results.json ./...'
 
-      # Сборка и пуш Scanner Worker
-      - name: Build and push Scanner image
-        uses: docker/build-push-action@v5
+      # 3. Строгий контроль качества кода
+      - name: Golangci-lint Execution
+        uses: golangci/golangci-lint-action@v6
         with:
-          context: .
-          file: ./Dockerfile.scanner
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scanner:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scanner:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          version: v1.59
+          args: --timeout=5m
+
+  test-and-build:
+    name: Compile & Execute Verification Tests
+    needs: audit-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Initialize Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      # Запуск тестов на моковых переменных
+      - name: Execute Deterministic Unit Tests
+        env:
+          STRIPE_WEBHOOK_SECRET: "whsec_mock_secret_for_ci_testing"
+          SPICEDB_PRESHARED_KEY: "mock_key"
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/db?sslmode=disable"
+        run: |
+          go test -v -race -timeout 30s ./...
+
+      # Проверка компиляции финального бинарника для Production
+      - name: Verify Production Compilation
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o ./bin/gateway ./cmd/api/main.go

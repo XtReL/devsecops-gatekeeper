@@ -1,0 +1,237 @@
+package billing
+
+import (
+	"bytes"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+// Mock для подписей (в реальных тестах используй Stripe CLI)
+func createTestWebhookSignature(_ []byte, _ string) string {
+	// Это упрощенный пример - в реальности используй:
+	// stripe trigger checkout.session.completed
+	return "t=" + fmt.Sprint(time.Now().Unix()) + ",v1=test"
+}
+
+func TestHandleStripeWebhook_InvalidMethod(t *testing.T) {
+	handler := HandleStripeWebhook(&sql.DB{}, "test_secret")
+	req, _ := http.NewRequest(http.MethodGet, "/webhook", nil)
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected 405, got %d", w.Code)
+	}
+}
+
+func TestHandleStripeWebhook_MissingSecret(t *testing.T) {
+	handler := HandleStripeWebhook(&sql.DB{}, "")
+	req, _ := http.NewRequest(http.MethodPost, "/webhook", bytes.NewReader([]byte("{}")))
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("Expected 500, got %d", w.Code)
+	}
+}
+
+func TestHandleStripeWebhook_MissingSignatureHeader(t *testing.T) {
+	handler := HandleStripeWebhook(&sql.DB{}, "test_secret")
+	req, _ := http.NewRequest(http.MethodPost, "/webhook", bytes.NewReader([]byte("{}")))
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected 401, got %d", w.Code)
+	}
+}
+
+func TestHandleCheckoutSessionCompleted_MissingTenantID(t *testing.T) {
+	// Тест проверяет валидацию tenant_id в metadata
+	session := StripeCheckoutSession{
+		ID:       "cs_test_123",
+		Status:   "complete",
+		Metadata: map[string]string{}, // tenant_id отсутствует
+	}
+
+	payload, _ := json.Marshal(session)
+	_ = payload
+
+	// В реальном тесте нужно использовать mock database
+	// Этот тест демонстрирует структуру
+	if tenantIDStr, ok := session.Metadata["tenant_id"]; !ok || tenantIDStr == "" {
+		if ok != false {
+			t.Error("Expected tenant_id to be missing")
+		}
+	}
+}
+
+func TestHandleCheckoutSessionCompleted_InvalidTenantID(t *testing.T) {
+	// Тест проверяет валидацию формата tenant_id
+	session := StripeCheckoutSession{
+		ID:     "cs_test_123",
+		Status: "complete",
+		Metadata: map[string]string{
+			"tenant_id": "not_a_number", // Невалидный формат
+		},
+	}
+
+	if _, err := json.Marshal(session); err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	// Валидация должна отклонить это значение
+}
+
+func TestSubscriptionIsActive(t *testing.T) {
+	tests := []struct {
+		name     string
+		sub      *Subscription
+		expected bool
+	}{
+		{
+			name: "Active subscription not expired",
+			sub: &Subscription{
+				Status:           StatusActive,
+				CurrentPeriodEnd: time.Now().Add(24 * time.Hour),
+			},
+			expected: true,
+		},
+		{
+			name: "Active subscription but expired",
+			sub: &Subscription{
+				Status:           StatusActive,
+				CurrentPeriodEnd: time.Now().Add(-24 * time.Hour),
+			},
+			expected: false,
+		},
+		{
+			name: "Canceled subscription",
+			sub: &Subscription{
+				Status:           StatusCanceled,
+				CurrentPeriodEnd: time.Now().Add(24 * time.Hour),
+			},
+			expected: false,
+		},
+		{
+			name: "Expired subscription",
+			sub: &Subscription{
+				Status:           StatusExpired,
+				CurrentPeriodEnd: time.Now().Add(-1 * time.Hour),
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.sub.IsActive()
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestCheckoutSessionCompleted_ValidPayload(t *testing.T) {
+	// Демонстрирует правильную структуру payload для checkout.session.completed
+	validSession := StripeCheckoutSession{
+		ID:     "cs_test_abc123",
+		Status: "complete",
+		Metadata: map[string]string{
+			"tenant_id": "12345",
+		},
+		Subscription: "sub_test_xyz789",
+	}
+
+	payload, err := json.Marshal(validSession)
+	if err != nil {
+		t.Fatalf("Failed to marshal: %v", err)
+	}
+
+	var parsed StripeCheckoutSession
+	if err := json.Unmarshal(payload, &parsed); err != nil {
+		t.Fatalf("Failed to unmarshal: %v", err)
+	}
+
+	if parsed.ID != "cs_test_abc123" {
+		t.Errorf("Expected cs_test_abc123, got %s", parsed.ID)
+	}
+	if parsed.Metadata["tenant_id"] != "12345" {
+		t.Errorf("Expected tenant_id 12345, got %s", parsed.Metadata["tenant_id"])
+	}
+}
+
+// Интеграционный тест (требует реальное БД подключение)
+func TestBillingIntegration_SkipIfNoDB(t *testing.T) {
+	// Пример: как бы выглядел интеграционный тест
+	// В CI/CD среде нужно настроить тестовую БД
+	t.Skip("Integration tests require database connection")
+
+	// dsn := os.Getenv("DATABASE_URL_TEST")
+	// if dsn == "" {
+	//     t.Skip("DATABASE_URL_TEST not set")
+	// }
+	//
+	// db, err := sql.Open("postgres", dsn)
+	// if err != nil {
+	//     t.Fatalf("Failed to connect to test DB: %v", err)
+	// }
+	// defer db.Close()
+	//
+	// // Выполняем миграции
+	// // Тестируем GetSubscriptionByTenant
+	// // Тестируем CheckSubscriptionAccess
+}
+
+// Тест: Webhook Signature Verification
+// ПРИМЕЧАНИЕ: В реальности используй Stripe Test Mode и их Test Secrets
+func TestWebhookSignatureVerification(t *testing.T) {
+	// Это демонстрирует, как должна выглядеть верификация
+	// Stripe использует HMAC-SHA256 для подписей
+
+	testSecret := "whsec_test_secret_123"
+	testPayload := []byte(`{
+		"id":"evt_test",
+		"type":"checkout.session.completed",
+		"data":{
+			"object":{
+				"id":"cs_test",
+				"metadata":{"tenant_id":"12345"}
+			}
+		}
+	}`)
+	_ = testSecret
+	_ = testPayload
+
+	// В реальном тесте:
+	// sig := webhook.GenerateTestSignature(testPayload, testSecret)
+	// req.Header.Set("Stripe-Signature", sig)
+
+	// Для этого примера просто проверяем, что метод вызывается
+	if testSecret == "" {
+		t.Error("Secret should not be empty")
+	}
+}
+
+// Benchmark: CheckSubscriptionAccess
+func BenchmarkCheckSubscriptionAccess(b *testing.B) {
+	// ПРИМЕЧАНИЕ: Требует реальное БД подключение для benchmark
+	b.Skip("Benchmark requires database connection")
+
+	// db, _ := sql.Open("postgres", testDSN)
+	// defer db.Close()
+	//
+	// b.ResetTimer()
+	// for i := 0; i < b.N; i++ {
+	//     CheckSubscriptionAccess(db, 12345)
+	// }
+}

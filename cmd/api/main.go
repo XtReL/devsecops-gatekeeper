@@ -6,23 +6,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"devsecops-gatekeeper/internal/billing"
 	"devsecops-gatekeeper/internal/broker"
+	"devsecops-gatekeeper/internal/config"
+	"devsecops-gatekeeper/internal/iam"
+	"devsecops-gatekeeper/internal/middleware"
 
-	pb "github.com/authzed/authzed-go/proto/authzed/api/v1"
-	"github.com/authzed/authzed-go/v1"
-	"github.com/authzed/grpcutil"
+	"github.com/google/go-github/v60/github" // [SECURITY] Профессиональный движок для валидации HMAC-SHA256 подписей
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/nats-io/nats.go"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Gateway struct {
 	js    nats.JetStreamContext
-	spice *authzed.Client
+	spice *iam.SpiceDBClient
 	db    *sql.DB
+	cfg   config.Config
 }
 
 type FindingResponse struct {
@@ -41,10 +43,28 @@ type UpdateStatusRequest struct {
 }
 
 func main() {
+	// 0. ЗАГРУЗКА ПЕРЕМЕННЫХ ОКРУЖЕНИЯ: Самая первая операция, до всех логов и инициализаций
+	// [FAIL-SOFT] Если файл не найден (prod-среда) - только warning, но не останавливаем приложение
+	envPath := ".env"
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		// Файл не существует - нормально для production (переменные из внешних источников)
+		log.Printf("[BOOT] ⚠️ ВНИМАНИЕ: Файл %s не найден. Используются переменные окружения из системы/контейнера.", envPath)
+	} else if err := godotenv.Load(envPath); err != nil {
+		// Файл существует, но ошибка при загрузке
+		log.Printf("[BOOT] ⚠️ ВНИМАНИЕ: Ошибка загрузки %s: %v. Используются переменные окружения из системы/контейнера.", envPath, err)
+	} else {
+		log.Printf("[BOOT] ✅ Переменные окружения загружены из %s", envPath)
+	}
+
 	log.Println("[BOOT] Запуск API Gateway...")
 
+	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("[FATAL] invalid configuration: %v", err)
+	}
+
 	// 1. Подключение к асинхронной шине событий NATS
-	nc, err := nats.Connect("nats://nats:4222")
+	nc, err := nats.Connect(cfg.NATSURL)
 	if err != nil {
 		log.Fatalf("[FATAL] NATS недоступен: %v", err)
 	}
@@ -55,24 +75,30 @@ func main() {
 		log.Fatalf("[FATAL] JetStream не инициализирован: %v", err)
 	}
 
-	// 2. Инициализация gRPC клиента авторизации SpiceDB с защитой транспортного слоя
-	spiceClient, err := authzed.NewClient(
-		"spicedb:50051",
-		grpcutil.WithInsecureBearerToken("somerandomkeyhere"),
-		grpc.WithTransportCredentials(insecure.NewCredentials()), // Безопасное явное указание plaintext-режима для локального контура
-	)
-	if err != nil {
-		log.Fatalf("[FATAL] SpiceDB недоступен: %v", err)
-	}
-
 	// 3. Подключение к реляционной СУБД PostgreSQL (Изолированный порт хоста)
-	dbConn, err := sql.Open("postgres", "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable")
+	dbConn, err := sql.Open("postgres", cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("[FATAL] Ошибка подключения к БД: %v", err)
 	}
 	defer dbConn.Close()
 
-	gw := &Gateway{js: js, spice: spiceClient, db: dbConn}
+	// --- НАЧАЛО ВСТАВЛЯЕМОГО БЛОКА ---
+	// 1. Поднимаем IAM-клиента
+	spiceEndpoint := os.Getenv("SPICEDB_ENDPOINT")
+	if spiceEndpoint == "" {
+		spiceEndpoint = "localhost:50051"
+	}
+	spiceClient, err := iam.NewSpiceDBClient(spiceEndpoint, os.Getenv("SPICEDB_PRESHARED_KEY"))
+	if err != nil {
+		log.Fatalf("[FATAL] Ошибка подключения к SpiceDB: %v", err)
+	}
+
+	// 2. Собираем контроллер Биллинга с внедренными зависимостями
+	webhookController := billing.NewWebhookHandler(dbConn, spiceClient)
+	// --- КОНЕЦ ВСТАВЛЯЕМОГО БЛОКА ---
+
+	// Теперь spiceClient существует и успешно передастся в Gateway
+	gw := &Gateway{js: js, spice: spiceClient, db: dbConn, cfg: cfg}
 
 	// Регистрация детерминированных HTTP-маршрутов
 	mux := http.NewServeMux()
@@ -80,13 +106,12 @@ func main() {
 	mux.HandleFunc("/api/v1/findings", gw.HandleGetFindings)
 	mux.HandleFunc("/api/v1/findings/status", gw.HandleUpdateStatus)
 
-	// Регистрация эндпоинта для Stripe вебхуков
-	// Секрет временно захардкожен для локального тестирования (в проде берется из .env)
-	stripeSecret := "whsec_test_secret"
-	mux.HandleFunc("/api/v1/billing/stripe", billing.HandleStripeWebhook(dbConn, stripeSecret))
+	// 3. Регистрация эндпоинта
+	// Передаем метод контроллера как обработчик HTTP-запросов
+	mux.HandleFunc("/api/v1/billing/stripe", webhookController.HandleStripeWebhook)
 
-	log.Println("[READY] API Gateway развернут на порту 8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	log.Printf("[READY] API Gateway развернут на порту %s", cfg.Port)
+	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {
 		log.Fatalf("[FATAL] Сбой сервера: %v", err)
 	}
 }
@@ -101,30 +126,30 @@ func (gw *Gateway) HandleGetFindings(w http.ResponseWriter, r *http.Request) {
 	user := r.Header.Get("X-User-Login")
 	repo := r.URL.Query().Get("repo")
 
-	if user == "" || repo == "" {
-		http.Error(w, "Параметры X-User-Login и repo обязательны", http.StatusBadRequest)
+	if err := middleware.ValidateUserLogin(user); err != nil {
+		http.Error(w, "invalid X-User-Login", http.StatusBadRequest)
+		return
+	}
+	if err := middleware.ValidateRepoName(repo); err != nil {
+		http.Error(w, "invalid repo parameter", http.StatusBadRequest)
 		return
 	}
 
 	log.Printf("[AUTHZ] Проверка прав: может ли %s читать отчеты %s...", user, repo)
 
-	// Детерминированная проверка отношений (Zero Trust Isolation)
-	resp, err := gw.spice.CheckPermission(r.Context(), &pb.CheckPermissionRequest{
-		Resource:   &pb.ObjectReference{ObjectType: "repository", ObjectId: repo},
-		Permission: "writer",
-		Subject: &pb.SubjectReference{
-			Object: &pb.ObjectReference{ObjectType: "user", ObjectId: user},
-		},
-	})
+	// 1. Делаем новый вызов, который возвращает чистый bool (hasAccess) и err
+	hasAccess, err := gw.spice.CheckPermission(r.Context(), user, repo, "writer")
 
+	// 2. Проверяем ошибку инфраструктуры (сеть, gRPC)
 	if err != nil {
 		log.Printf("[ERROR] Сбой проверки SpiceDB: %v", err)
 		http.Error(w, "Внутренняя ошибка авторизации", http.StatusInternalServerError)
 		return
 	}
 
-	if resp.Permissionship != pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
-		log.Printf("[SECURITY ALERT] 🛑 Отказ в доступе! Пользователь %s пытался прочитать отчеты репо %s", user, repo)
+	// 3. Проверяем бизнес-логику (есть ли права?)
+	if !hasAccess {
+		log.Printf("[SECURITY ALERT] 🛑 Отказ в доступе! Пользователь %s пытался прочитать %s", user, repo)
 		http.Error(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
@@ -161,6 +186,23 @@ func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// [SECURITY FIX] 1. АУТЕНТИФИКАЦИЯ (AuthN): Проверка криптографической подписи GitHub
+	secret := []byte(gw.cfg.WebhookSecret)
+	if len(secret) == 0 {
+		log.Println("[FATAL] WEBHOOK_SECRET не задан в конфигурации окружения!")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// ValidatePayload предотвращает атаки по времени (Timing Attacks) на сверку хэшей
+	payloadBytes, err := github.ValidatePayload(r, secret)
+	if err != nil {
+		log.Printf("[SECURITY] Поддельный вебхук или некорректная HMAC-подпись: %v", err)
+		http.Error(w, "Bad signature", http.StatusForbidden)
+		return
+	}
+
+	// 2. ДЕКОДИРОВАНИЕ (Парсинг гарантированно подлинных и очищенных байтов)
 	var payload struct {
 		Installation struct {
 			ID int `json:"id"`
@@ -173,41 +215,43 @@ func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		} `json:"sender"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
 
-	// 1. ПРОВЕРКА АВТОРИЗАЦИИ (Zero Trust)
-	resp, err := gw.spice.CheckPermission(r.Context(), &pb.CheckPermissionRequest{
-		Resource:   &pb.ObjectReference{ObjectType: "repository", ObjectId: payload.Repository.Name},
-		Permission: "writer",
-		Subject: &pb.SubjectReference{
-			Object: &pb.ObjectReference{ObjectType: "user", ObjectId: payload.Sender.Login},
-		},
-	})
+	// 3. АВТОРИЗАЦИЯ (AuthZ): Zero Trust проверка отношений в графе SpiceDB
+	// 3. Авторизация (AuthZ):
+	// Вставляем ваши переменные из старого пейлоада (скорее всего payload.Sender.Login и payload.Repository.Name)
+	hasAccess, err := gw.spice.CheckPermission(r.Context(), payload.Sender.Login, payload.Repository.Name, "writer")
 
-	if err != nil || resp.Permissionship != pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
-		log.Printf("[SECURITY] Отказ доступа: %s -> %s", payload.Sender.Login, payload.Repository.Name)
+	// Сразу проверяем и системную ошибку, и бизнес-логику (отказ в доступе)
+	if err != nil || !hasAccess {
+		log.Printf("[SECURITY] Отказ доступа SpiceDB: пользователь %s не верифицирован", payload.Sender.Login)
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	// [NEW] 2. ФИНАНСОВЫЙ КОНТРОЛЬ: Блокировка неоплаченного трафика (Economic Denial of Service Protection)
-	var subStatus string
-	tenantID := fmt.Sprintf("%d", payload.Installation.ID)
+	// 4. ФИНАНСОВЫЙ КОНТРОЛЬ: Защита от ресурсоемкого сканирования неоплаченных аккаунтов (Anti-EDoS)
+	tenantID := int64(payload.Installation.ID)
 
-	err = gw.db.QueryRow("SELECT status FROM subscriptions WHERE tenant_id = $1", tenantID).Scan(&subStatus)
+	// Проверка активной подписки через пакет billing
+	hasActiveSubscription, err := gw.HasActiveSubscription(tenantID)
+	if err != nil {
+		log.Printf("[BILLING ERROR] Ошибка проверки подписки для tenant %d: %v", tenantID, err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
-	if err == sql.ErrNoRows || subStatus != "active" {
-		log.Printf("[BILLING] ⛔ Отказ в обслуживании: неоплаченная/отсутствующая подписка для Tenant %s", tenantID)
+	if !hasActiveSubscription {
+		log.Printf("[BILLING] ⛔ Отказ в обслуживании: неоплаченная/отсутствующая подписка для Tenant %d", tenantID)
 		http.Error(w, "Payment Required", http.StatusPaymentRequired) // HTTP 402
 		return
 	}
 
-	// 3. МАРШРУТИЗАЦИЯ ЗАДАЧИ
+	// 5. МАРШРУТИЗАЦИЯ ЗАДАЧИ В БРОКЕР
 	task := broker.TaskPayload{
-		TenantID: tenantID,
+		TenantID: fmt.Sprintf("%d", tenantID),
 		RepoName: payload.Repository.Name,
 	}
 
@@ -219,14 +263,14 @@ func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		Subjects: []string{"sast.scan.>"},
 	})
 
-	_, err = gw.js.Publish("sast.scan."+task.TenantID, taskData)
+	_, err = gw.js.Publish("sast.scan."+fmt.Sprintf("%d", tenantID), taskData)
 	if err != nil {
 		log.Printf("[ERROR] Ошибка публикации в NATS: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	log.Println("Задача успешно принята в очередь сканирования")
+	log.Println("[PIPELINE] Задача успешно принята в очередь сканирования NATS")
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte(`{"status":"accepted"}`))
 }
@@ -266,16 +310,12 @@ func (gw *Gateway) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 
 	// 2. СВЯЗЫВАНИЕ КОНТЕКСТА С ЗОНОЙ ДОВЕРИЯ (SpiceDB Validation)
 	log.Printf("[AUTHZ] Проверка прав на модификацию статуса: %s -> %s (Tenant: %s)", user, repoName, tenantID)
-	resp, err := gw.spice.CheckPermission(r.Context(), &pb.CheckPermissionRequest{
-		Resource:   &pb.ObjectReference{ObjectType: "repository", ObjectId: repoName},
-		Permission: "writer",
-		Subject: &pb.SubjectReference{
-			Object: &pb.ObjectReference{ObjectType: "user", ObjectId: user},
-		},
-	})
+	// 2. СВЯЗЫВАНИЕ КОНТЕКСТА С ЗОНОЙ ДОВЕРИЯ (SpiceDB Validation)
+	// Используем наши переменные из функции: user и repoName
+	hasAccess, err := gw.spice.CheckPermission(r.Context(), user, repoName, "writer")
 
-	if err != nil || resp.Permissionship != pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
-		log.Printf("[SECURITY ALERT] 🚨 Попытка несанкционированного изменения статуса! Пользователь %s -> Алерт %d", user, req.FindingID)
+	if err != nil || !hasAccess {
+		log.Printf("[SECURITY ALERT] 🚨 Попытка несанкционированного изменения статуса от %s для %s", user, repoName)
 		http.Error(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
@@ -292,4 +332,10 @@ func (gw *Gateway) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[AUDIT] ✅ Пользователь %s изменил статус алерта %d (%s) на %s", user, req.FindingID, repoName, req.Status)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"success"}`))
+}
+
+// HasActiveSubscription проверяет наличие активной подписки для тенанта
+// Используется для Anti-EDoS защиты: только оплаченные аккаунты могут запускать сканирование
+func (gw *Gateway) HasActiveSubscription(tenantID int64) (bool, error) {
+	return billing.CheckSubscriptionAccess(gw.db, tenantID)
 }

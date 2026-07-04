@@ -6,9 +6,38 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 )
+
+var (
+	repoNamePattern  = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,100}$`)
+	userLoginPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,64}$`)
+)
+
+// ValidateRepoName ensures repository names are limited and contain only safe characters.
+func ValidateRepoName(value string) error {
+	if value == "" {
+		return fmt.Errorf("repository name is required")
+	}
+	if !repoNamePattern.MatchString(value) {
+		return fmt.Errorf("repository name contains invalid characters")
+	}
+	return nil
+}
+
+// ValidateUserLogin ensures the user identifier is limited and contains only safe characters.
+func ValidateUserLogin(value string) error {
+	if value == "" {
+		return fmt.Errorf("user login is required")
+	}
+	if !userLoginPattern.MatchString(value) {
+		return fmt.Errorf("user login contains invalid characters")
+	}
+	return nil
+}
 
 // VerifyGitHubSignature проверяет подлинность вебхука по HMAC-SHA256
 func VerifyGitHubSignature(secret string, next http.HandlerFunc) http.HandlerFunc {
