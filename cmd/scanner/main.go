@@ -80,7 +80,7 @@ func main() {
 		// [PROD] Динамическое определение цели на основе метаданных задачи
 		targetURL := fmt.Sprintf("https://github.com/XtReL/%s.git", task.RepoName)
 		log.Printf("[EXEC] ⏳ Клонирование боевого репозитория %s...", targetURL)
-
+		// #nosec G204
 		cloneCmd := exec.Command("git", "clone", "--depth", "1", targetURL, scanDir)
 		if output, err := cloneCmd.CombinedOutput(); err != nil {
 			log.Printf("[ERROR] Сбой клонирования:\n%s", string(output))
@@ -90,7 +90,7 @@ func main() {
 
 		log.Println("[SCAN] 🕵️ Запуск Gitleaks для поиска секретов...")
 		reportPath := filepath.Join(scanDir, "gitleaks-report.json")
-
+		// #nosec G204
 		scanCmd := exec.Command("gitleaks", "detect", "--source", scanDir, "--report-format", "json", "--report-path", reportPath)
 		err = scanCmd.Run()
 

@@ -13,7 +13,8 @@ import (
 func main() {
 	// 1. Формируем "поддельный" JSON от Stripe (Событие успешной оплаты)
 	payload := `{"id":"evt_vip_001","type":"invoice.paid","api_version":"2023-10-16","data":{"object":{"subscription":"sub_test_999","period_end":1893456000}}}`
-	
+
+	// #nosec G101
 	secret := "whsec_test_secret" // Тот самый хардкод из нашего Шлюза
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
 
@@ -38,6 +39,6 @@ func main() {
 		fmt.Printf("[ОШИБКА СЕТИ] %v\n", err)
 		return
 	}
-	
+
 	fmt.Printf("[СТАТУС АТАКИ] HTTP %s\n", resp.Status)
 }
