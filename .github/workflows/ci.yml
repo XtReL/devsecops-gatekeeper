@@ -36,6 +36,10 @@ jobs:
         with:
           args: '-exclude=G104,G108 ./...'
 
+      # [NEW FIX]: Принудительно скачиваем библиотеки перед линтером
+      - name: Download Go Modules
+        run: go mod download
+
       # 3. Строгий контроль качества кода
       - name: Golangci-lint Execution
         uses: golangci/golangci-lint-action@v6
