@@ -46,6 +46,7 @@ jobs:
         with:
           version: v1.59
           args: --timeout=5m
+          skip-cache: true
 
   test-and-build:
     name: Compile & Execute Verification Tests
