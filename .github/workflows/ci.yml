@@ -44,7 +44,7 @@ jobs:
       - name: Golangci-lint Execution
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.59
+          version: latest
           args: --timeout=5m
           skip-cache: true
 
@@ -59,7 +59,7 @@ jobs:
       - name: Initialize Go Environment
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.25.x'
           cache: true
 
       # Запуск тестов на моковых переменных
