@@ -2,12 +2,10 @@
 package cache
 
 import (
-	"github.com/redis/go-redis/v9"
 	"context"
+	"devsecops-gatekeeper/internal/auth"
 	"fmt"
 	"time"
-
-	"devsecops-gatekeeper/internal/auth" // Замените на реальное имя вашего go-модуля (из go.mod)
 
 	"github.com/go-redis/redis/v8"
 )

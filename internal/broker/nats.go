@@ -2,7 +2,6 @@
 package broker
 
 import (
-	"github.com/nats-io/nats.go"
 	"encoding/json"
 	"fmt"
 	"time"

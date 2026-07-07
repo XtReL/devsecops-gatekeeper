@@ -1,7 +1,6 @@
 package iam
 
 import (
-	"github.com/authzed/authzed-go/v1"
 	"context"
 	"fmt"
 
