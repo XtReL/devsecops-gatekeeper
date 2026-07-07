@@ -1,6 +1,7 @@
 package github
 
 import (
+	"github.com/golang-jwt/jwt/v5"
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
