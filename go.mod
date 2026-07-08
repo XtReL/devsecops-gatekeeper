@@ -10,8 +10,8 @@ require (
 	github.com/google/go-github/v60 v60.0.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.12.3
-	github.com/nats-io/nats.go v1.52.0
-	github.com/stripe/stripe-go/v76 v76.25.0
+	github.com/nats-io/nats.go v1.34.1
+	github.com/stripe/stripe-go/v76 v76.20.0
 	google.golang.org/grpc v1.81.1
 )
 

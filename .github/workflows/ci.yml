@@ -20,7 +20,7 @@ jobs:
       - name: Initialize Go Environment
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.25.8'
           cache: true
 
       # 1. Сканирование на утечку секретов
