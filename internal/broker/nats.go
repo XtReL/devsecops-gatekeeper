@@ -18,8 +18,9 @@ type NATSBroker struct {
 type TaskPayload struct {
 	TenantID string `json:"tenant_id"`
 	RepoName string `json:"repo_name"`
-	Commit   string `json:"commit"`
-	IAT      string `json:"iat"` // Тот самый токен, который мы достали из кэша
+	// [CRITICAL FIX] Приведено в соответствие с контрактом API Gateway
+	CommitSHA string `json:"commit_sha"`
+	IAT       string `json:"iat"` // Тот самый токен, который мы достали из кэша
 }
 
 func NewNATSBroker(url string) (*NATSBroker, error) {
