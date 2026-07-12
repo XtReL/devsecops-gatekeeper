@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	pb "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	"github.com/authzed/authzed-go/v1"
@@ -64,8 +65,10 @@ func (s *SpiceDBClient) GrantAccess(ctx context.Context, resourceType, resourceI
 }
 
 // CheckPermission проверяет наличие прав в графе.
-// CheckPermission проверяет наличие прав в графе. Теперь принимает permission как аргумент!
 func (s *SpiceDBClient) CheckPermission(ctx context.Context, user, repo, permission string) (bool, error) {
+	slog.Info("[IAM] Запрос к оракулу SpiceDB...", "user", user, "repo", repo, "permission", permission)
+
+	// Формируем строгий gRPC-запрос
 	req := &pb.CheckPermissionRequest{
 		Consistency: &pb.Consistency{
 			Requirement: &pb.Consistency_FullyConsistent{FullyConsistent: true},
@@ -74,7 +77,7 @@ func (s *SpiceDBClient) CheckPermission(ctx context.Context, user, repo, permiss
 			ObjectType: "repository",
 			ObjectId:   repo,
 		},
-		Permission: permission, // <--- Теперь динамически берет то, что просит main.go
+		Permission: permission,
 		Subject: &pb.SubjectReference{
 			Object: &pb.ObjectReference{
 				ObjectType: "user",
@@ -83,10 +86,47 @@ func (s *SpiceDBClient) CheckPermission(ctx context.Context, user, repo, permiss
 		},
 	}
 
+	// Физический поход в графовую БД
 	resp, err := s.client.CheckPermission(ctx, req)
 	if err != nil {
+		slog.Error("[IAM CRITICAL] Ошибка gRPC при проверке прав", "err", err)
 		return false, fmt.Errorf("ошибка проверки прав в SpiceDB: %w", err)
 	}
 
-	return resp.Permissionship == pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION, nil
+	// Транслируем ответ Zanzibar
+	isAllowed := resp.Permissionship == pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION
+
+	if isAllowed {
+		slog.Info("[IAM SUCCESS] ✅ Доступ РАЗРЕШЕН (Zanzibar подтвердил связь)")
+	} else {
+		slog.Warn("[IAM REJECT] ⛔ Доступ ЗАПРЕЩЕН (Связь в графе не найдена)")
+	}
+
+	return isAllowed, nil
 }
+
+/* === ОРИГИНАЛЬНЫЙ КОД (ЗАКОММЕНТИРОВАН ДЛЯ БАЙПАССА) ===
+req := &pb.CheckPermissionRequest{
+	Consistency: &pb.Consistency{
+		Requirement: &pb.Consistency_FullyConsistent{FullyConsistent: true},
+	},
+	Resource: &pb.ObjectReference{
+		ObjectType: "repository",
+		ObjectId:   repo,
+	},
+	Permission: permission,
+	Subject: &pb.SubjectReference{
+		Object: &pb.ObjectReference{
+			ObjectType: "user",
+			ObjectId:   user,
+		},
+	},
+}
+
+resp, err := s.client.CheckPermission(ctx, req)
+if err != nil {
+	return false, fmt.Errorf("ошибка проверки прав в SpiceDB: %w", err)
+}
+
+return resp.Permissionship == pb.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION, nil
+*/

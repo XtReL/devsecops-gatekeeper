@@ -27,7 +27,7 @@ services:
   # 2.2 Графовый движок (ReBAC Zanzibar)
   spicedb:
     image: authzed/spicedb:latest
-    command: serve --grpc-preshared-key "somerandomkeyhere" --datastore-engine postgres --datastore-conn-uri "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"
+    command: serve --grpc-preshared-key "devsecops-secret-key" --datastore-engine postgres --datastore-conn-uri "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"
     ports:
       - "50051:50051"
     depends_on:

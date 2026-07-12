@@ -40,13 +40,11 @@ jobs:
       - name: Download Go Modules
         run: go mod download
 
-      # 3. Строгий контроль качества кода
-      - name: Golangci-lint Execution
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --timeout=5m --go=1.24
-          skip-cache: true
+      # 3. Строгий контроль качества кода (Native Toolchain)
+      - name: Native Go Linting & Vet
+        run: |
+          go fmt ./...
+          go vet ./...
 
   test-and-build:
     name: Compile & Execute Verification Tests

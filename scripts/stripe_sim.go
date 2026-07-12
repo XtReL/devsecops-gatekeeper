@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -7,38 +9,74 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 )
 
+const (
+	// Эндпоинт шлюза для приема вебхуков Stripe
+	targetURL = "http://localhost:8080/api/v1/billing/stripe"
+	// Секрет верификации вебхуков (должен совпадать с STRIPE_WEBHOOK_SECRET в .env)
+	webhookSecret = "stripe-dev-secret"
+)
+
 func main() {
-	// 1. Формируем "поддельный" JSON от Stripe (Событие успешной оплаты)
-	payload := `{"id":"evt_vip_001","type":"invoice.paid","api_version":"2023-10-16","data":{"object":{"subscription":"sub_test_999","period_end":1893456000}}}`
+	fmt.Println(">>> Формирование синтетического платежного события Stripe...")
 
-	// #nosec G101
-	secret := "whsec_test_secret" // Тот самый хардкод из нашего Шлюза
-	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	// Имитируем успешную оплату подписки для Tenant 0 (или укажите ваш TenantID)
+	timestamp := time.Now().Unix()
+	payload := []byte(fmt.Sprintf(`{
+		"id": "evt_test_charge_success",
+		"object": "event",
+		"type": "checkout.session.completed",
+		"data": {
+			"object": {
+				"id": "cs_test_b12345",
+				"client_reference_id": "0",
+				"customer": "cus_Hfd8392jnd",
+				"subscription": "sub_12345Active",
+				"payment_status": "paid"
+			}
+		}
+	}`))
 
-	// 2. Генерируем криптографическую подпись, как это делает ядро Stripe
-	// Формула: HMAC_SHA256(timestamp + "." + payload, secret)
-	sigPayload := timestamp + "." + payload
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(sigPayload))
-	signature := hex.EncodeToString(mac.Sum(nil))
+	// Вычисление легитимной сигнатуры Stripe (Паттерн t=timestamp,v1=signature)
+	// Stripe подписывает строку: "timestamp.payload"
+	signatureHeader := prepareStripeSignature(timestamp, payload, webhookSecret)
 
-	// 3. Упаковываем в заголовок Stripe-Signature
-	header := fmt.Sprintf("t=%s,v1=%s", timestamp, signature)
-
-	// 4. Отправляем боевой POST запрос в наш локальный Docker-кластер
-	req, _ := http.NewRequest("POST", "http://localhost:8080/api/v1/billing/stripe", bytes.NewBufferString(payload))
-	req.Header.Set("Stripe-Signature", header)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	// Формирование HTTP-запроса
+	req, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(payload))
 	if err != nil {
-		fmt.Printf("[ОШИБКА СЕТИ] %v\n", err)
+		fmt.Printf("⛔ Ошибка создания запроса: %v\n", err)
 		return
 	}
 
-	fmt.Printf("[СТАТУС АТАКИ] HTTP %s\n", resp.Status)
+	// Установка обязательных заголовков
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Stripe-Signature", signatureHeader)
+
+	fmt.Printf(">>> Отправка вебхука на %s\n", targetURL)
+	fmt.Printf(">>> Stripe-Signature: %s\n", signatureHeader)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("⛔ Ошибка отправки: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	fmt.Printf("<<< Gatekeeper Status: %d %s\n", resp.StatusCode, resp.Status)
+}
+
+// prepareStripeSignature собирает заголовок подписи по спецификации Stripe
+func prepareStripeSignature(timestamp int64, payload []byte, secret string) string {
+	tStr := strconv.FormatInt(timestamp, 10)
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(tStr))
+	mac.Write([]byte("."))
+	mac.Write(payload)
+	signature := hex.EncodeToString(mac.Sum(nil))
+
+	return fmt.Sprintf("t=%s,v1=%s", tStr, signature)
 }

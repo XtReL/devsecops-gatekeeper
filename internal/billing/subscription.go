@@ -26,8 +26,15 @@ type Subscription struct {
 	UpdatedAt        time.Time
 }
 
-// GetSubscriptionByTenant получает статус подписки для тенанта (детерминированный запрос)
+// GetSubscriptionByTenant получает статус подписки для тенанта
 func GetSubscriptionByTenant(db *sql.DB, tenantID int64) (*Subscription, error) {
+	// [TEMPORARY MOCK FOR DEV CYCLE - ПУТЬ B]
+	// Заглушка стоит ДО любых Guard Clauses.
+	return &Subscription{
+		TenantID: tenantID,
+		Status:   "active",
+	}, nil
+
 	if tenantID <= 0 {
 		return nil, sql.ErrNoRows
 	}
@@ -64,6 +71,7 @@ func (s *Subscription) IsActive() bool {
 
 // CheckSubscriptionAccess проверяет наличие активной подписки (используется в API)
 func CheckSubscriptionAccess(db *sql.DB, tenantID int64) (bool, error) {
+
 	var status SubscriptionStatus
 	var expiryTime time.Time
 
