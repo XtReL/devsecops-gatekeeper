@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"devsecops-gatekeeper/internal/auth"
 	"devsecops-gatekeeper/internal/broker"
 	"devsecops-gatekeeper/internal/config"
 	"devsecops-gatekeeper/internal/db"
@@ -58,7 +60,13 @@ func main() {
 	}
 	log.Println("[BOOT] GitHub App клиент успешно загружен")
 
-	// 3. Подключение к NATS
+	// ==========================================
+	// Инициализация Auth-клиента (Enforcement Layer)
+	// Передаем dummy-значения, так как используем MOCK-токен в auth.go
+	// ==========================================
+	authClient := auth.NewGitHubAppClient("dummy_app_id", nil)
+
+	// Подключение к NATS
 	nc, err := nats.Connect(cfg.NATSURL)
 	if err != nil {
 		log.Fatalf("[FATAL] Ошибка NATS: %v", err)
@@ -125,15 +133,15 @@ func main() {
 		// [CRITICAL FIX] Обход защиты Go 1.19+ (Dot Path Security)
 		gitleaksBin, _ := filepath.Abs("gitleaks.exe")
 
-		// #nosec G204
-		scanCmd := exec.Command(gitleaksBin, "detect", "--source", scanDir, "--report-format", "json", "--report-path", reportPath)
+		// [Security by Default]: Защита от EDoS. Сканируем строго дельту последнего коммита.
+		scanCmd := exec.Command(gitleaksBin, "detect", "--source", scanDir, "--log-opts", "-1", "--report-format", "json", "--report-path", reportPath)
 		err = scanCmd.Run()
 
 		if err != nil {
 			if exitErr, ok := err.(*exec.ExitError); ok {
 				if exitErr.ExitCode() == 1 {
 					// Утечки найдены! Запускаем парсинг
-					parseReport(reportPath, task, database, ghClient)
+					parseReport(reportPath, task, database, ghClient, authClient)
 				} else {
 					log.Printf("[ERROR] Внутренняя ошибка Gitleaks: %v", exitErr)
 				}
@@ -162,7 +170,7 @@ func main() {
 }
 
 // parseReport читает JSON от Gitleaks, сохраняет в БД и открывает Issue в GitHub
-func parseReport(reportPath string, task broker.TaskPayload, database *db.Database, ghClient *github.Client) {
+func parseReport(reportPath string, task broker.TaskPayload, database *db.Database, ghClient *github.Client, authClient *auth.GitHubAppClient) {
 	// #nosec G304 - Имя файла отчета формируется детерминированно без участия пользователя
 	reportData, err := os.ReadFile(reportPath)
 	if err != nil {
@@ -216,13 +224,14 @@ func parseReport(reportPath string, task broker.TaskPayload, database *db.Databa
 
 	// 3. ОТПРАВКА УВЕДОМЛЕНИЯ В GITHUB (Если есть уязвимости)
 	if savedCount > 0 {
-		log.Println("[GITHUB] Инициирована отправка отчета в удаленный репозиторий...")
+		log.Println("[GITHUB] Инициирована отправка отчета и блокировка PR...")
 
 		issueTitle := fmt.Sprintf("🚨 Gatekeeper Security Scan: Найдено %d уязвимостей", savedCount)
 		issueBody := fmt.Sprintf("### Автоматический отчет ИБ 🛡️\n\nВ ходе проверки коммита сканер **Gitleaks** обнаружил **%d** незашифрованных секретов (Hardcoded Credentials) в исходном коде.\n\n**Рекомендация:**\n1. Удалите секреты из кода.\n2. Перенесите их в переменные окружения (`.env`) или Vault.\n3. Сбросьте (отозвите) утекшие ключи в панели провайдера, так как они скомпрометированы в истории Git.\n\n*Сгенерировано платформой DevSecOps Gatekeeper.*", savedCount)
 
 		// Точечный вызов к вашему аккаунту XtReL
 		realGitHubInstallationID := "140230661"
+		repoOwner := "XtReL"
 
 		// [CRITICAL FIX] Подмена фейкового имени на реальное для API GitHub
 		targetRepo := task.RepoName
@@ -230,11 +239,35 @@ func parseReport(reportPath string, task broker.TaskPayload, database *db.Databa
 			targetRepo = "devsecops-gatekeeper"
 		}
 
-		err := ghClient.CreateIssue(realGitHubInstallationID, "XtReL", targetRepo, issueTitle, issueBody)
+		// 1. Пассивный контур: Создание Issue
+		err := ghClient.CreateIssue(realGitHubInstallationID, repoOwner, targetRepo, issueTitle, issueBody)
 		if err != nil {
 			log.Printf("[ERROR] ❌ Сбой создания Issue: %v", err)
 		} else {
 			log.Println("[GITHUB] ✅ Успешно создан тикет об уязвимости!")
+		}
+
+		// ==========================================
+		// 2. [ENFORCEMENT LAYER]: Активная блокировка
+		// ==========================================
+		if task.CommitSHA != "" {
+			log.Println("[ENFORCEMENT] Инициирована аппаратная блокировка коммита...")
+
+			// Получаем токен для взаимодействия (заглушка или реальный IAT)
+			token, err := authClient.GenerateInstallationToken(context.Background(), realGitHubInstallationID, nil)
+			if err != nil {
+				log.Printf("[ERROR] Ошибка Auth-слоя GitHub (Check Run): %v", err)
+			} else {
+				// Наносим точечный HTTP-удар для перевода статуса в FAILED
+				err = authClient.EnforceCheckRun(context.Background(), token, repoOwner, targetRepo, task.CommitSHA, issueBody)
+				if err != nil {
+					log.Printf("[ENFORCEMENT FAILURE] Сбой интеграции API: %v", err)
+				} else {
+					log.Println("[ENFORCEMENT SUCCESS] 🛑 Слияние кода физически заблокировано в GitHub")
+				}
+			}
+		} else {
+			log.Println("[ENFORCEMENT SKIP] Хэш коммита (CommitSHA) отсутствует. Блокировка невозможна.")
 		}
 	}
 }

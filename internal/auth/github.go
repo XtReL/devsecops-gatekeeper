@@ -13,7 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// GitHubAppClient инкапсулирует логику авторизации. 
+// GitHubAppClient инкапсулирует логику авторизации.
 // Компоненты ничего не знают о внутреннем устройстве GitHub API.
 type GitHubAppClient struct {
 	appID      string
@@ -21,7 +21,7 @@ type GitHubAppClient struct {
 	httpClient *http.Client
 }
 
-// NewGitHubAppClient инициализирует клиент. 
+// NewGitHubAppClient инициализирует клиент.
 // [SECURITY NOTE]: privateKey должен извлекаться из Vault (in-memory).
 func NewGitHubAppClient(appID string, privKey *rsa.PrivateKey) *GitHubAppClient {
 	return &GitHubAppClient{
@@ -91,4 +91,58 @@ func (c *GitHubAppClient) GenerateInstallationToken(ctx context.Context, install
 	}
 
 	return result.Token, nil
+}
+
+// CheckRunPayload — контракт (DTO) для взаимодействия с GitHub Check Runs API
+type CheckRunPayload struct {
+	Name       string `json:"name"`
+	HeadSHA    string `json:"head_sha"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	Output     struct {
+		Title   string `json:"title"`
+		Summary string `json:"summary"`
+		Text    string `json:"text"`
+	} `json:"output"`
+}
+
+// EnforceCheckRun отправляет синхронный HTTP-пакет для физической блокировки слияния кода (Merge).
+// [SECURITY NOTE]: Токен (token) передается снаружи, так как жизненный цикл IAT управляется отдельным слоем.
+func (c *GitHubAppClient) EnforceCheckRun(ctx context.Context, token, owner, repo, commitSHA, alertDetails string) error {
+	payload := CheckRunPayload{
+		Name:       "Gatekeeper Zero Trust SAST",
+		HeadSHA:    commitSHA,
+		Status:     "completed",
+		Conclusion: "failure", // Детерминированный отказ (Fail-Secure)
+	}
+	payload.Output.Title = "🚨 Блокировка: Обнаружена утечка секретов"
+	payload.Output.Summary = "DevSecOps-шлюз прервал транзакцию."
+	payload.Output.Text = fmt.Sprintf("Детали инцидента:\n```\n%s\n```\nУдалите токен из истории Git и выполните push --force.", alertDetails)
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal check run payload: %w", err)
+	}
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/check-runs", owner, repo)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Ingress-авторизация в целевом контуре GitHub
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("github api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("github api check-run failed with status: %d", resp.StatusCode)
+	}
+
+	return nil
 }
