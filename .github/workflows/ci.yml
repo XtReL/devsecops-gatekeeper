@@ -50,6 +50,16 @@ jobs:
           test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
           go vet ./...
 
+      # 4. ADR 0001: workflow_run и pull_request_target запрещены во всём репозитории
+      # (передают токен установки через данные из непроверенного кода PR, см. "Связанное" в ADR).
+      - name: Forbid dangerous workflow triggers
+        run: |
+          set -euo pipefail
+          if grep -rnE '^[[:space:]]*(workflow_run|pull_request_target):' .github/workflows/; then
+            echo "workflow_run/pull_request_target triggers are forbidden repo-wide (ADR 0001)" >&2
+            exit 1
+          fi
+
   test-and-build:
     name: Compile & Execute Verification Tests
     needs: audit-and-lint
