@@ -222,7 +222,8 @@ func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	case "push":
 		// Пропускаем трафик дальше на распаковку структуры
 	default:
-		log.Printf("WARN [API] Отбрасывание неподдерживаемого события: %s", eventType)
+		// Значение заголовка не логируется: он не входит в подпись HMAC.
+		log.Println("WARN [API] Отбрасывание неподдерживаемого события")
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}

@@ -63,14 +63,12 @@ func main() {
 	}
 	log.Println("[BOOT] GitHub App клиент успешно загружен")
 
-	// Путь к gitleaks определяется один раз при старте: GITLEAKS_BIN или поиск в PATH.
-	gitleaksBin := os.Getenv("GITLEAKS_BIN")
-	if gitleaksBin == "" {
-		if gitleaksBin, err = exec.LookPath("gitleaks"); err != nil {
-			log.Fatalf("[FATAL] gitleaks не найден в PATH и GITLEAKS_BIN не задан: %v", err)
-		}
+	// Путь к gitleaks фиксирован: Dockerfile.scanner ставит его в /usr/local/bin.
+	// Из окружения путь не берётся, чтобы в exec не попадали внешние данные.
+	const gitleaksBin = "/usr/local/bin/gitleaks"
+	if _, err := os.Stat(gitleaksBin); err != nil {
+		log.Fatalf("[FATAL] gitleaks не найден: %v", err)
 	}
-	log.Printf("[BOOT] gitleaks: %s", gitleaksBin)
 
 	// 3. Подключение к NATS
 	nc, err := nats.Connect(cfg.NATSURL)
