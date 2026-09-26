@@ -4,7 +4,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: gatekeeper
     ports:
       - "5433:5432"
@@ -19,7 +19,7 @@ services:
   # 2.1 Эфемерный мигратор графа (Init Container)
   spicedb-migrate:
     image: authzed/spicedb:latest
-    command: datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"
+    command: datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/gatekeeper?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
@@ -27,7 +27,7 @@ services:
   # 2.2 Графовый движок (ReBAC Zanzibar)
   spicedb:
     image: authzed/spicedb:latest
-    command: serve --grpc-preshared-key "devsecops-secret-key" --datastore-engine postgres --datastore-conn-uri "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"
+    command: serve --grpc-preshared-key "${SPICEDB_TOKEN:?set SPICEDB_TOKEN in .env}" --datastore-engine postgres --datastore-conn-uri "postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/gatekeeper?sslmode=disable"
     ports:
       - "50051:50051"
     depends_on:
@@ -58,8 +58,7 @@ services:
       - nats
       - postgres
       - spicedb
-    environment: # [SECURITY] Инжектируем секрет из .env хоста в изолированную память контейнера
-      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+    env_file: .env # [SECURITY] все секреты только из .env хоста (шаблон: .env.example)
     volumes:
       # [SECURITY] Прокидываем ключ в режиме Read-Only (ro), не вшивая его в сам образ
       - ./key.pem:/app/key.pem:ro
@@ -68,6 +67,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.scanner
+    env_file: .env
     depends_on:
       - nats
       - postgres

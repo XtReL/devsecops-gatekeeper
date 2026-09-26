@@ -16,7 +16,6 @@ type Config struct {
 	SpiceDBToken         string
 	GitHubAppID          string
 	GitHubPrivateKeyPath string
-	GitHubOwner          string
 }
 
 func Load() Config {
@@ -24,12 +23,11 @@ func Load() Config {
 		Port:                 getenv("PORT", "8080"),
 		WebhookSecret:        os.Getenv("WEBHOOK_SECRET"),
 		NATSURL:              getenv("NATS_URL", "nats://nats:4222"),
-		DatabaseURL:          getenv("DATABASE_URL", "postgres://postgres:supersecretpassword@postgres:5432/gatekeeper?sslmode=disable"),
+		DatabaseURL:          os.Getenv("DATABASE_URL"),
 		SpiceDBEndpoint:      getenv("SPICEDB_ENDPOINT", "spicedb:50051"),
 		SpiceDBToken:         os.Getenv("SPICEDB_TOKEN"),
-		GitHubAppID:          getenv("GITHUB_APP_ID", "4051135"),
+		GitHubAppID:          os.Getenv("GITHUB_APP_ID"),
 		GitHubPrivateKeyPath: getenv("GITHUB_PRIVATE_KEY_PATH", "./key.pem"),
-		GitHubOwner:          getenv("GITHUB_OWNER", "XtReL"),
 	}
 }
 
@@ -48,6 +46,9 @@ func (c Config) Validate() error {
 	}
 	if strings.TrimSpace(c.SpiceDBToken) == "" {
 		return fmt.Errorf("SPICEDB_TOKEN must be configured")
+	}
+	if strings.TrimSpace(c.GitHubAppID) == "" {
+		return fmt.Errorf("GITHUB_APP_ID must be configured")
 	}
 	if strings.TrimSpace(c.GitHubPrivateKeyPath) == "" {
 		return fmt.Errorf("GITHUB_PRIVATE_KEY_PATH must be configured")

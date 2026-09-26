@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	// Корневой клиент
 	authzed "github.com/authzed/authzed-go/v1"
@@ -26,8 +27,11 @@ func main() {
 	_ = godotenv.Load(".env")
 	fmt.Println(">>> Инициализация графовой схемы SpiceDB...")
 
-	// [FIX] Отключаем чтение .env, чтобы исключить невидимые символы Windows CRLF
-	token := "devsecops-secret-key"
+	// TrimSpace убирает невидимые символы Windows CRLF из .env
+	token := strings.TrimSpace(os.Getenv("SPICEDB_TOKEN"))
+	if token == "" {
+		log.Fatal("⛔ SPICEDB_TOKEN не задан (см. .env.example)")
+	}
 
 	// Чтение вашей ZED-схемы
 	schemaBytes, err := os.ReadFile("iam/schema.zed")

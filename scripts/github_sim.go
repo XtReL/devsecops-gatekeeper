@@ -10,23 +10,35 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
-const (
-	targetURL = "http://localhost:8080/webhook"
-	secret    = "whsec_fbf69a17e74e7a6eb9a169f12904a5edcca6aa77d9d39638afc2f6fcb3c39d1a" // Синхронизировано с fallback-значением в main.go
-)
+const targetURL = "http://localhost:8080/webhook"
 
 func main() {
+	// Секрет вебхука только из окружения (тот же WEBHOOK_SECRET, что у API).
+	secret := strings.TrimSpace(os.Getenv("WEBHOOK_SECRET"))
+	if secret == "" {
+		fmt.Println("sre_alert: WEBHOOK_SECRET is not set (see .env.example)")
+		os.Exit(1)
+	}
+
 	// 1. Формирование синтетического Payload (Selective Unmarshaling test)
 	payload := []byte(`{
 		"action": "opened",
+		"installation": {
+			"id": 1
+		},
 		"repository": {
+			"id": 1,
+			"name": "devsecops-gatekeeper",
 			"full_name": "XtReL/devsecops-gatekeeper"
 		},
 		"sender": {
-			"login": "XtReL"
+			"login": "XtReL",
+			"id": 1
 		},
 		"pull_request": {
 			"number": 42
@@ -48,6 +60,7 @@ func main() {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Hub-Signature-256", signature)
+	req.Header.Set("X-GitHub-Event", "push")
 
 	fmt.Printf(">>> Sending payload to %s\n", targetURL)
 	fmt.Printf(">>> Signature: %s\n", signature)

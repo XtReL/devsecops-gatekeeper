@@ -85,11 +85,8 @@ func main() {
 
 	// --- НАЧАЛО ВСТАВЛЯЕМОГО БЛОКА ---
 	// 1. Поднимаем IAM-клиента
-	spiceEndpoint := os.Getenv("SPICEDB_ENDPOINT")
-	if spiceEndpoint == "" {
-		spiceEndpoint = "localhost:50051"
-	}
-	spiceClient, err := iam.NewSpiceDBClient(spiceEndpoint, os.Getenv("SPICEDB_PRESHARED_KEY"))
+	// Адрес и токен SpiceDB — только из проверенной конфигурации (cfg.Validate).
+	spiceClient, err := iam.NewSpiceDBClient(cfg.SpiceDBEndpoint, cfg.SpiceDBToken)
 	if err != nil {
 		log.Fatalf("[FATAL] Ошибка подключения к SpiceDB: %v", err)
 	}

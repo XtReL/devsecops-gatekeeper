@@ -2,6 +2,7 @@ package authz
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 
@@ -21,7 +22,7 @@ type SpiceDBClient struct {
 func NewSpiceDBClient() *SpiceDBClient {
 	token := os.Getenv("SPICEDB_TOKEN")
 	if token == "" {
-		token = "devsecops-secret-key"
+		log.Fatal("SPICEDB_TOKEN must be configured") // без токена по умолчанию
 	}
 
 	// Устанавливаем gRPC-туннель
