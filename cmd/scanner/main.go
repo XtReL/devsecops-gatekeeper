@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,6 +10,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,6 +19,7 @@ import (
 	"devsecops-gatekeeper/internal/config"
 	"devsecops-gatekeeper/internal/db"
 	"devsecops-gatekeeper/internal/github"
+	"devsecops-gatekeeper/internal/middleware"
 
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
@@ -58,6 +63,13 @@ func main() {
 	}
 	log.Println("[BOOT] GitHub App клиент успешно загружен")
 
+	// Путь к gitleaks фиксирован: Dockerfile.scanner ставит его в /usr/local/bin.
+	// Из окружения путь не берётся, чтобы в exec не попадали внешние данные.
+	const gitleaksBin = "/usr/local/bin/gitleaks"
+	if _, err := os.Stat(gitleaksBin); err != nil {
+		log.Fatalf("[FATAL] gitleaks не найден: %v", err)
+	}
+
 	// 3. Подключение к NATS
 	nc, err := nats.Connect(cfg.NATSURL)
 	if err != nil {
@@ -80,7 +92,7 @@ func main() {
 		}
 
 		// [POISON PILL FIX] Защита от фантомных задач из прошлых тестов
-		if task.RepoName == "" {
+		if task.RepoFullName == "" {
 			log.Printf("[WORKER] ⚠️ Обнаружен Poison Pill (пустое имя). Пакет уничтожен.")
 			m.Ack()
 			return
@@ -102,14 +114,17 @@ func main() {
 			log.Printf("[CLEANUP] 🧹 Директория %s физически уничтожена.", scanDir)
 		}()
 
-		// [TRANSLATION FIX] Перевод абстрактного имени из AuthZ в реальный URL для Git
-		cloneName := task.RepoName
-		if cloneName == "demo_repo" {
-			cloneName = "devsecops-gatekeeper" // Целимся в вашу реальную кодовую базу
+		// Репозиторий берётся из задачи (из подписанного вебхука) и
+		// проверяется ещё раз перед использованием в URL и команде.
+		if err := middleware.ValidateRepoFullName(task.RepoFullName); err != nil || task.InstallationID == 0 {
+			log.Printf("[ERROR] Некорректная задача: repo=%q installation=%d", task.RepoFullName, task.InstallationID)
+			m.Ack() // детерминированная ошибка, ретрай бессмыслен
+			return
 		}
-
-		targetURL := fmt.Sprintf("https://github.com/XtReL/%s.git", cloneName)
-		log.Printf("[EXEC] ⏳ Клонирование боевого репозитория %s...", targetURL)
+		// Пока клонируются только публичные репозитории; приватные требуют
+		// токена установки и появятся вместе с облачным режимом.
+		targetURL := fmt.Sprintf("https://github.com/%s.git", task.RepoFullName)
+		log.Printf("[EXEC] ⏳ Клонирование %s...", targetURL)
 
 		// #nosec G204
 		cloneCmd := exec.Command("git", "clone", "--depth", "1", targetURL, scanDir)
@@ -121,9 +136,6 @@ func main() {
 
 		log.Println("[SCAN] 🕵️ Запуск Gitleaks для поиска секретов...")
 		reportPath := filepath.Join(scanDir, "gitleaks-report.json")
-
-		// [CRITICAL FIX] Обход защиты Go 1.19+ (Dot Path Security)
-		gitleaksBin, _ := filepath.Abs("gitleaks.exe")
 
 		// #nosec G204
 		scanCmd := exec.Command(gitleaksBin, "detect", "--source", scanDir, "--report-format", "json", "--report-path", reportPath)
@@ -184,16 +196,13 @@ func parseReport(reportPath string, task broker.TaskPayload, database *db.Databa
 		rule := f["Description"].(string)
 		file := f["File"].(string)
 
-		// 1. МАСКИРОВАНИЕ (Защита от утечки в логи и БД)
-		maskedSecret := secret
-		if len(secret) > 6 {
-			maskedSecret = secret[:6] + "***"
-		} else {
-			maskedSecret = "***"
-		}
+		// 1. ОТПЕЧАТОК вместо фрагмента секрета: ни одного символа секрета
+		// не попадает в логи и БД, но одинаковые секреты сопоставимы между сканами.
+		sum := sha256.Sum256([]byte(secret))
+		fingerprint := "sha256:" + hex.EncodeToString(sum[:])
 
 		if i < 2 {
-			log.Printf("         -> [CVE] Правило: %s | Файл: %s | Секрет: %s", rule, file, maskedSecret)
+			log.Printf("         -> [CVE] Правило: %s | Файл: %s | Отпечаток: %s", rule, file, fingerprint[:19])
 		}
 
 		// 2. СОХРАНЕНИЕ В БАЗУ ПОСТГРЕС
@@ -202,7 +211,7 @@ func parseReport(reportPath string, task broker.TaskPayload, database *db.Databa
 			RepoName: task.RepoName,
 			RuleID:   rule,
 			FilePath: file,
-			Secret:   maskedSecret,
+			Secret:   fingerprint,
 		}
 
 		if err := database.SaveFinding(finding); err != nil {
@@ -221,16 +230,10 @@ func parseReport(reportPath string, task broker.TaskPayload, database *db.Databa
 		issueTitle := fmt.Sprintf("🚨 Gatekeeper Security Scan: Найдено %d уязвимостей", savedCount)
 		issueBody := fmt.Sprintf("### Автоматический отчет ИБ 🛡️\n\nВ ходе проверки коммита сканер **Gitleaks** обнаружил **%d** незашифрованных секретов (Hardcoded Credentials) в исходном коде.\n\n**Рекомендация:**\n1. Удалите секреты из кода.\n2. Перенесите их в переменные окружения (`.env`) или Vault.\n3. Сбросьте (отозвите) утекшие ключи в панели провайдера, так как они скомпрометированы в истории Git.\n\n*Сгенерировано платформой DevSecOps Gatekeeper.*", savedCount)
 
-		// Точечный вызов к вашему аккаунту XtReL
-		realGitHubInstallationID := "140230661"
+		owner, repo, _ := strings.Cut(task.RepoFullName, "/")
+		installationID := strconv.FormatInt(task.InstallationID, 10)
 
-		// [CRITICAL FIX] Подмена фейкового имени на реальное для API GitHub
-		targetRepo := task.RepoName
-		if targetRepo == "demo_repo" {
-			targetRepo = "devsecops-gatekeeper"
-		}
-
-		err := ghClient.CreateIssue(realGitHubInstallationID, "XtReL", targetRepo, issueTitle, issueBody)
+		err := ghClient.CreateIssue(installationID, owner, repo, issueTitle, issueBody)
 		if err != nil {
 			log.Printf("[ERROR] ❌ Сбой создания Issue: %v", err)
 		} else {

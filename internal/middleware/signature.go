@@ -15,7 +15,16 @@ import (
 var (
 	repoNamePattern  = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,100}$`)
 	userLoginPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,64}$`)
+	repoFullPattern  = regexp.MustCompile(`^[a-zA-Z0-9-]{1,39}/[a-zA-Z0-9._-]{1,100}$`)
 )
+
+// ValidateRepoFullName ensures an "owner/repo" name is safe to use in URLs and commands.
+func ValidateRepoFullName(value string) error {
+	if !repoFullPattern.MatchString(value) {
+		return fmt.Errorf("repository full name must look like owner/repo")
+	}
+	return nil
+}
 
 // ValidateRepoName ensures repository names are limited and contain only safe characters.
 func ValidateRepoName(value string) error {

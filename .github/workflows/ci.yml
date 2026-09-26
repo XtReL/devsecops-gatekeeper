@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# Actions закреплены на полных SHA коммитов (тег в комментарии): перенос тега не меняет то, что выполняется в CI.
 permissions:
   contents: read
 
@@ -15,24 +16,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Initialize Go Environment
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25.8'
           cache: true
 
       # 1. Сканирование на утечку секретов
       - name: GitGuardian Shield Scan
-        uses: GitGuardian/ggshield-action@master
+        uses: GitGuardian/ggshield-action@7f66d3be9c59a821dcf4f45ee5d929203a1a0b90 # v1.55.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
       # 2. Превентивный ИБ-анализ кода (SAST)
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
+        uses: securego/gosec@deb54465fea23d19a77f037e11e6589021f8501d # v2.29.0
         with:
           args: '-exclude=G104,G108 ./...'
 
@@ -43,7 +46,8 @@ jobs:
       # 3. Строгий контроль качества кода (Native Toolchain)
       - name: Native Go Linting & Vet
         run: |
-          go fmt ./...
+          # Проверка, а не исправление: CI падает, если код не отформатирован
+          test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
           go vet ./...
 
   test-and-build:
@@ -52,10 +56,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Initialize Go Environment
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25.8'
           cache: true
@@ -64,7 +70,7 @@ jobs:
       - name: Execute Deterministic Unit Tests
         env:
           STRIPE_WEBHOOK_SECRET: "whsec_mock_secret_for_ci_testing"
-          SPICEDB_PRESHARED_KEY: "mock_key"
+          SPICEDB_TOKEN: "mock_key"
           DATABASE_URL: "postgres://postgres:postgres@localhost:5432/db?sslmode=disable"
         run: |
           go test -v -race -timeout 30s ./...

@@ -28,13 +28,6 @@ type Subscription struct {
 
 // GetSubscriptionByTenant получает статус подписки для тенанта
 func GetSubscriptionByTenant(db *sql.DB, tenantID int64) (*Subscription, error) {
-	// [TEMPORARY MOCK FOR DEV CYCLE - ПУТЬ B]
-	// Заглушка стоит ДО любых Guard Clauses.
-	return &Subscription{
-		TenantID: tenantID,
-		Status:   "active",
-	}, nil
-
 	if tenantID <= 0 {
 		return nil, sql.ErrNoRows
 	}
