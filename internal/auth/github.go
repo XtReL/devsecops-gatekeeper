@@ -12,7 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// GitHubAppClient инкапсулирует логику авторизации. 
+// GitHubAppClient инкапсулирует логику авторизации.
 // Компоненты ничего не знают о внутреннем устройстве GitHub API.
 type GitHubAppClient struct {
 	appID      string
@@ -20,7 +20,7 @@ type GitHubAppClient struct {
 	httpClient *http.Client
 }
 
-// NewGitHubAppClient инициализирует клиент. 
+// NewGitHubAppClient инициализирует клиент.
 // [SECURITY NOTE]: privateKey должен извлекаться из Vault (in-memory).
 func NewGitHubAppClient(appID string, privKey *rsa.PrivateKey) *GitHubAppClient {
 	return &GitHubAppClient{
