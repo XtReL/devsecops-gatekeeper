@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -196,16 +198,13 @@ func parseReport(reportPath string, task broker.TaskPayload, database *db.Databa
 		rule := f["Description"].(string)
 		file := f["File"].(string)
 
-		// 1. МАСКИРОВАНИЕ (Защита от утечки в логи и БД)
-		maskedSecret := secret
-		if len(secret) > 6 {
-			maskedSecret = secret[:6] + "***"
-		} else {
-			maskedSecret = "***"
-		}
+		// 1. ОТПЕЧАТОК вместо фрагмента секрета: ни одного символа секрета
+		// не попадает в логи и БД, но одинаковые секреты сопоставимы между сканами.
+		sum := sha256.Sum256([]byte(secret))
+		fingerprint := "sha256:" + hex.EncodeToString(sum[:])
 
 		if i < 2 {
-			log.Printf("         -> [CVE] Правило: %s | Файл: %s | Секрет: %s", rule, file, maskedSecret)
+			log.Printf("         -> [CVE] Правило: %s | Файл: %s | Отпечаток: %s", rule, file, fingerprint[:19])
 		}
 
 		// 2. СОХРАНЕНИЕ В БАЗУ ПОСТГРЕС
@@ -214,7 +213,7 @@ func parseReport(reportPath string, task broker.TaskPayload, database *db.Databa
 			RepoName: task.RepoName,
 			RuleID:   rule,
 			FilePath: file,
-			Secret:   maskedSecret,
+			Secret:   fingerprint,
 		}
 
 		if err := database.SaveFinding(finding); err != nil {
