@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"log" // НОВОЕ: Добавлено для вывода отладочной информации
 	"net/http"
 	"time"
 
@@ -34,16 +33,6 @@ func NewGitHubAppClient(appID string, privKey *rsa.PrivateKey) *GitHubAppClient 
 
 // GenerateInstallationToken обменивает JWT на IAT для конкретного тенанта
 func (c *GitHubAppClient) GenerateInstallationToken(ctx context.Context, installationID string, permissions map[string]string) (string, error) {
-	// --- [MOCK] Заглушка для Фазы 3: Изоляция от реального GitHub API ---
-	log.Printf("[DEBUG] Используется локальная заглушка токена для Installation ID: %s", installationID)
-	return "mock_iat_token_777_local_dev", nil
-
-	// =====================================================================
-	// НИЖЕ РЕАЛЬНЫЙ КОД (ВРЕМЕННО НЕДОСТИЖИМ)
-	// Компилятор скомпилирует его, но выполнение сюда никогда не дойдет.
-	// Это избавляет нас от необходимости удалять импорты (crypto/rsa, bytes и др.)
-	// =====================================================================
-
 	// 1. Генерация JWT (TTL строго 10 минут)
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.RegisteredClaims{

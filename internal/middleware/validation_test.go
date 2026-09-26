@@ -32,3 +32,16 @@ func TestValidateUserLogin(t *testing.T) {
 		t.Fatal("ValidateUserLogin accepted invalid login")
 	}
 }
+
+func TestValidateRepoFullName(t *testing.T) {
+	for _, ok := range []string{"XtReL/devsecops-gatekeeper", "org/my.repo_1"} {
+		if err := ValidateRepoFullName(ok); err != nil {
+			t.Fatalf("rejected valid %q: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"", "noslash", "a/b/c", "owner/../x", "own er/repo", "owner/repo;rm"} {
+		if err := ValidateRepoFullName(bad); err == nil {
+			t.Fatalf("accepted invalid %q", bad)
+		}
+	}
+}

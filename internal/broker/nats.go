@@ -16,10 +16,13 @@ type NATSBroker struct {
 
 // TaskPayload — структура данных, которая полетит в эфемерный K8s-контейнер
 type TaskPayload struct {
-	TenantID string `json:"tenant_id"`
-	RepoName string `json:"repo_name"`
-	Commit   string `json:"commit"`
-	IAT      string `json:"iat"` // Тот самый токен, который мы достали из кэша
+	TenantID       string `json:"tenant_id"`
+	RepoName       string `json:"repo_name"`
+	RepoFullName   string `json:"repo_full_name"`  // owner/repo, из вебхука GitHub
+	InstallationID int64  `json:"installation_id"` // установка GitHub App, из вебхука
+	Commit         string `json:"commit"`
+	// Токены доступа сюда намеренно не кладутся: очередь JetStream хранит
+	// сообщения на диске. Сканер сам получает короткоживущий токен установки.
 }
 
 func NewNATSBroker(url string) (*NATSBroker, error) {

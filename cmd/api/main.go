@@ -233,15 +233,16 @@ func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	// 2. ДЕКОДИРОВАНИЕ (Парсинг гарантированно подлинных и очищенных байтов)
 	var payload struct {
 		Installation struct {
-			ID int `json:"id"`
+			ID int64 `json:"id"`
 		} `json:"installation"`
 		Repository struct {
+			ID       int64  `json:"id"`
 			Name     string `json:"name"`
 			FullName string `json:"full_name"`
 		} `json:"repository"`
 		Sender struct {
 			Login string `json:"login"`
-			ID    int    `json:"id"`
+			ID    int64  `json:"id"`
 		} `json:"sender"`
 	}
 
@@ -250,58 +251,33 @@ func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// [CRITICAL FIX]: Переключение на ID живого разработчика
-	tenantID := int64(payload.Sender.ID)
-	authzUser := fmt.Sprintf("%d", tenantID)
-
-	// [CRITICAL FIX] Синхронизация реального ID с ID в базе данных
-	// Если стучится ваш реальный аккаунт, маскируем его под "владельца" из БД
-	if authzUser == "238690902" {
-		authzUser = "140230661"
-		log.Println("WARN [IAM] Выполнена подмена ID (238690902 -> 140230661) для прохождения графа")
+	// Все идентификаторы берутся только из подписанного вебхука. Никаких
+	// подмен ID и обходов авторизации в коде: доступ выдаётся через SpiceDB.
+	if payload.Installation.ID == 0 || payload.Repository.ID == 0 || payload.Sender.ID == 0 {
+		http.Error(w, "Missing installation, repository or sender", http.StatusBadRequest)
+		return
 	}
-
-	finalRepoName := payload.Repository.Name
-
-	if finalRepoName == "" {
-		finalRepoName = payload.Repository.FullName
-	}
-	// Если симулятор прислал тестовое имя, подменяем его на то, которое мы "оплатили" в базе
-	if finalRepoName == "XtReL/devsecops-gatekeeper" || finalRepoName == "" {
-		finalRepoName = "demo_repo"
-	}
-
-	// 3. АВТОРИЗАЦИЯ (AuthZ): Zero Trust проверка отношений в графе SpiceDB
-	hasAccess, err := gw.spice.CheckPermission(r.Context(), authzUser, finalRepoName, "reader")
-
-	// [BREAK-GLASS PROTOCOL] Временный обход амнезии БД для MVP
-	if authzUser == "140230661" {
-		log.Println("WARN [IAM] BREAK-GLASS: Принудительный пропуск авторизации для Root-пользователя")
-		hasAccess = true
-		err = nil
-	}
-
-	if err != nil || !hasAccess {
-		log.Printf("[SECURITY] Отказ доступа SpiceDB: пользователь %s не верифицирован для %s", authzUser, finalRepoName)
-		http.Error(w, "Forbidden", http.StatusForbidden)
+	if err := middleware.ValidateRepoFullName(payload.Repository.FullName); err != nil {
+		http.Error(w, "Invalid repository name", http.StatusBadRequest)
 		return
 	}
 
+	tenantID := payload.Sender.ID
+	authzUser := fmt.Sprintf("%d", tenantID)
+	// Ресурс в SpiceDB — числовой ID репозитория GitHub: он допустим в
+	// ID объекта SpiceDB (имя с точкой — нет) и не меняется при переименовании.
+	authzRepo := fmt.Sprintf("%d", payload.Repository.ID)
+
+	// 3. АВТОРИЗАЦИЯ (AuthZ): Zero Trust проверка отношений в графе SpiceDB
+	hasAccess, err := gw.spice.CheckPermission(r.Context(), authzUser, authzRepo, "reader")
 	if err != nil || !hasAccess {
-		log.Printf("[SECURITY] Отказ доступа SpiceDB: пользователь %s не верифицирован для %s", authzUser, finalRepoName)
+		log.Printf("[SECURITY] Отказ доступа SpiceDB: пользователь %s не верифицирован для %s", authzUser, payload.Repository.FullName)
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
 	// 4. ФИНАНСОВЫЙ КОНТРОЛЬ: Защита от ресурсоемкого сканирования неоплаченных аккаунтов (Anti-EDoS)
 	hasActiveSubscription, err := gw.HasActiveSubscription(tenantID)
-
-	// [BREAK-GLASS PROTOCOL] Временная эмуляция оплаченного аккаунта для MVP
-	if authzUser == "140230661" {
-		log.Println("WARN [BILLING] BREAK-GLASS: Принудительный пропуск финансового контроля")
-		hasActiveSubscription = true
-		err = nil
-	}
 
 	if err != nil {
 		log.Printf("[BILLING ERROR] Ошибка проверки подписки: %v", err)
@@ -317,8 +293,10 @@ func (gw *Gateway) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// 5. МАРШРУТИЗАЦИЯ ЗАДАЧИ В БРОКЕР
 	task := broker.TaskPayload{
-		TenantID: authzUser,
-		RepoName: finalRepoName,
+		TenantID:       authzUser,
+		RepoName:       payload.Repository.Name,
+		RepoFullName:   payload.Repository.FullName,
+		InstallationID: payload.Installation.ID,
 	}
 	taskData, _ := json.Marshal(task)
 
