@@ -58,6 +58,15 @@ func main() {
 	}
 	log.Println("[BOOT] GitHub App клиент успешно загружен")
 
+	// Путь к gitleaks определяется один раз при старте: GITLEAKS_BIN или поиск в PATH.
+	gitleaksBin := os.Getenv("GITLEAKS_BIN")
+	if gitleaksBin == "" {
+		if gitleaksBin, err = exec.LookPath("gitleaks"); err != nil {
+			log.Fatalf("[FATAL] gitleaks не найден в PATH и GITLEAKS_BIN не задан: %v", err)
+		}
+	}
+	log.Printf("[BOOT] gitleaks: %s", gitleaksBin)
+
 	// 3. Подключение к NATS
 	nc, err := nats.Connect(cfg.NATSURL)
 	if err != nil {
@@ -121,9 +130,6 @@ func main() {
 
 		log.Println("[SCAN] 🕵️ Запуск Gitleaks для поиска секретов...")
 		reportPath := filepath.Join(scanDir, "gitleaks-report.json")
-
-		// [CRITICAL FIX] Обход защиты Go 1.19+ (Dot Path Security)
-		gitleaksBin, _ := filepath.Abs("gitleaks.exe")
 
 		// #nosec G204
 		scanCmd := exec.Command(gitleaksBin, "detect", "--source", scanDir, "--report-format", "json", "--report-path", reportPath)

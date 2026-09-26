@@ -22,3 +22,6 @@ key.pem
 
 # Binaries
 *.exe
+
+# Gitleaks ставится в образ из релиза с проверкой SHA-256, не коммитится
+/gitleaks
