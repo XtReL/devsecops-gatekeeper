@@ -52,29 +52,11 @@ jobs:
 
       # 4. ADR 0001 запрещает два триггера во всём репозитории (передают токен
       # установки через данные из непроверенного кода PR, см. "Связанное" в ADR).
-      # Слова собираются из частей, а не пишутся литералом в этом файле, чтобы
-      # шаг не находил сам себя при поиске по некомментарным строкам, и чтобы
-      # сообщение об ошибке их тоже не содержало.
+      # Логика — в scripts/lint-workflows.sh (используется и здесь, и
+      # локально из scripts/check.sh), чтобы CI и локальная проверка не
+      # расходились.
       - name: Forbid dangerous workflow triggers
-        run: |
-          set -euo pipefail
-          w1="workflow"; w1="${w1}_run"
-          w2="pull_request"; w2="${w2}_target"
-          pattern="${w1}|${w2}"
-
-          hit=0
-          shopt -s nullglob
-          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
-            [ -f "$f" ] || continue
-            if grep -vE '^[[:space:]]*#' "$f" | grep -qE "$pattern"; then
-              echo "::error file=$f::forbidden CI trigger keyword found (see ADR 0001)"
-              hit=1
-            fi
-          done
-
-          if [ "$hit" -ne 0 ]; then
-            exit 1
-          fi
+        run: scripts/lint-workflows.sh
 
   test-and-build:
     name: Compile & Execute Verification Tests
