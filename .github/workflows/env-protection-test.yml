@@ -1,0 +1,16 @@
+name: env-protection-test
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    environment: gatekeeper-evidence
+    steps:
+      - name: Print secret length only
+        env:
+          KEY: ${{ secrets.GATEKEEPER_SIGNING_KEY }}
+        run: echo "len=${#KEY}"
