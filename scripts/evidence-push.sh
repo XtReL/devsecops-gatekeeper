@@ -23,6 +23,12 @@ set -uo pipefail
 : "${RUN_ID:?RUN_ID is required}"
 : "${RUN_ATTEMPT:?RUN_ATTEMPT is required}"
 
+# A GitHub Actions runner has no global git identity, so a bare `git commit`
+# in $EVIDENCE_DIR fails with "Author identity unknown". Set one here, once,
+# rather than relying on ambient config that may not exist.
+git -C "$EVIDENCE_DIR" config user.name "gatekeeper-evidence[bot]"
+git -C "$EVIDENCE_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
 max_attempts=5
 
 publish_checkpoint_summary() {
@@ -58,7 +64,10 @@ for attempt in $(seq 1 "$max_attempts"); do
       publish_checkpoint_summary
       exit 0
     elif [ "$record_code" -ne 0 ]; then
-      echo "evidence-push: gatekeeper record exited $record_code" >&2
+      # Not a race (those only ever show up as a rejected push): retrying
+      # the same inputs against the same log would just fail the same way.
+      echo "evidence-push: gatekeeper record exited $record_code, not retrying" >&2
+      exit 1
     elif ! git -C "$EVIDENCE_DIR" add -A || ! git -C "$EVIDENCE_DIR" commit -m "evidence: $COMMIT run $RUN_ID/$RUN_ATTEMPT"; then
       echo "evidence-push: git commit failed" >&2
     elif git -C "$EVIDENCE_DIR" push origin "HEAD:gatekeeper-evidence"; then

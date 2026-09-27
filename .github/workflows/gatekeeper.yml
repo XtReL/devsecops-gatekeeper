@@ -43,14 +43,27 @@ jobs:
 
       - name: Upload scan result
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gatekeeper-result
           path: ${{ runner.temp }}/result.json
 
-      - name: Fail if the scan itself errored
-        if: steps.scan.outputs.code != '0' && steps.scan.outputs.code != '1'
-        run: exit 1
+      # Fails the job on ANY non-zero exit: findings (1) and a scan error
+      # (2) are both a red "scan" job, with a message telling them apart.
+      # The record job below still runs for 0 and 1 regardless (it gates on
+      # needs.scan.outputs.code with its own if: always(), not on this job's
+      # pass/fail), so a red scan job here never skips recording a FAILED
+      # result.
+      - name: Fail if scan found leaks or errored
+        if: steps.scan.outputs.code != '0'
+        run: |
+          code="${{ steps.scan.outputs.code }}"
+          if [ "$code" = "1" ]; then
+            echo "::error::gatekeeper scan found leaked secrets (see the gatekeeper-result artifact)"
+          else
+            echo "::error::gatekeeper scan failed with exit code $code"
+          fi
+          exit 1
 
   record:
     name: Record evidence
@@ -81,7 +94,7 @@ jobs:
         run: GOFLAGS=-mod=readonly go build -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper
 
       - name: Download scan result
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: gatekeeper-result
           path: ${{ runner.temp }}
@@ -106,3 +119,29 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: scripts/evidence-push.sh
+
+  evidence-push-selftest:
+    name: evidence-push.sh self-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build gatekeeper and trustcore
+        run: |
+          GOFLAGS=-mod=readonly go build -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper
+          GOFLAGS=-mod=readonly go build -o "$RUNNER_TEMP/trustcore" github.com/XtReL/trust-core/cmd/trustcore
+
+      # No secrets, no environment: this drives evidence-push.sh against a
+      # throwaway local bare repo and a key generated on the fly, in a git
+      # environment isolated from any ambient identity, per the phase-3
+      # review that asked for this test.
+      - name: Test evidence-push.sh against a local bare repo
+        run: scripts/evidence-push_test.sh "$RUNNER_TEMP/gatekeeper" "$RUNNER_TEMP/trustcore"

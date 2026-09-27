@@ -86,6 +86,10 @@ func Record(p Params) error {
 		return err
 	}
 
+	if err := validateCommit(p.Commit); err != nil {
+		return fmt.Errorf("evidence: %w", err)
+	}
+
 	resultBytes, err := os.ReadFile(p.ResultPath)
 	if err != nil {
 		return fmt.Errorf("evidence: read result file: %w", err)
@@ -93,6 +97,9 @@ func Record(p Params) error {
 	var result engine.Result
 	if err := json.Unmarshal(resultBytes, &result); err != nil {
 		return fmt.Errorf("evidence: parse result file: %w", err)
+	}
+	if err := validateResult(result); err != nil {
+		return fmt.Errorf("evidence: %w", err)
 	}
 
 	log, err := filelog.Open(p.Evidence, Origin(p.Repo), signer)
@@ -116,6 +123,41 @@ func Record(p Params) error {
 	rec := trustcore.Recorder{Attester: signer, Log: log}
 	if _, err := rec.Record(ev); err != nil {
 		return fmt.Errorf("evidence: record event: %w", err)
+	}
+	return nil
+}
+
+// commitSHALen is a full SHA-1 git commit hash length, ADR 0001's "все по
+// полным SHA".
+const commitSHALen = 40
+
+func validateCommit(commit string) error {
+	if len(commit) != commitSHALen {
+		return fmt.Errorf("commit %q is not a %d-character SHA", commit, commitSHALen)
+	}
+	if _, err := hex.DecodeString(commit); err != nil {
+		return fmt.Errorf("commit %q is not hex: %w", commit, err)
+	}
+	if strings.ToLower(commit) != commit {
+		return fmt.Errorf("commit %q must be lowercase hex", commit)
+	}
+	return nil
+}
+
+const scanResultFormat = "gatekeeper-scan/v1"
+
+// validateResult rejects a result.json that does not look like it came from
+// "gatekeeper scan", before it is ever signed: a malformed or foreign input
+// must not become a signed attestation.
+func validateResult(result engine.Result) error {
+	if result.Format != scanResultFormat {
+		return fmt.Errorf("result format %q is not %q", result.Format, scanResultFormat)
+	}
+	if result.GitleaksVersion == "" {
+		return errors.New("result gitleaksVersion is empty")
+	}
+	if !strings.HasPrefix(result.RulesDigest, "sha256:") {
+		return fmt.Errorf("result rulesDigest %q does not start with \"sha256:\"", result.RulesDigest)
 	}
 	return nil
 }

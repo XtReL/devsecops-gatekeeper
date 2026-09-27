@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,6 +19,31 @@ import (
 
 	"devsecops-gatekeeper/internal/engine"
 )
+
+// gatekeeperBinForTests is a real `go build` binary, not the `go test`
+// binary this package compiles into: only a real build embeds gitleaks'
+// version in runtime/debug.ReadBuildInfo (see internal/engine's own
+// gitleaksVersionFunc comment), which engine.Scan needs to succeed. Built
+// once for the whole package.
+var gatekeeperBinForTests string
+
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "evidence-gatekeeper-bin-*")
+	if err != nil {
+		panic("mkdir temp: " + err.Error())
+	}
+	defer os.RemoveAll(dir)
+
+	gatekeeperBinForTests = filepath.Join(dir, "gatekeeper")
+	build := exec.Command("go", "build", "-o", gatekeeperBinForTests, "devsecops-gatekeeper/cmd/gatekeeper")
+	build.Stdout = os.Stderr
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		panic("build gatekeeper binary: " + err.Error())
+	}
+
+	os.Exit(m.Run())
+}
 
 // genKeyPEM generates a fresh Ed25519 key and returns it as PKCS#8 PEM
 // bytes, the same shape GATEKEEPER_SIGNING_KEY carries — in memory only,
@@ -345,4 +371,142 @@ func publicPEM(t *testing.T, privPEM []byte) []byte {
 		t.Fatalf("marshal public key: %v", err)
 	}
 	return pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
+}
+
+func baseParams(logDir, repo, resultPath string) Params {
+	return Params{
+		ResultPath: resultPath,
+		Evidence:   logDir,
+		Repo:       repo,
+		Commit:     strings.Repeat("a", 40),
+		RunURL:     "https://github.com/" + repo + "/actions/runs/1",
+		RunID:      "5001",
+		RunAttempt: "1",
+	}
+}
+
+func writeRawResult(t *testing.T, data string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "result.json")
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatalf("write raw result: %v", err)
+	}
+	return path
+}
+
+func TestRecordRejectsWrongResultFormat(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	logDir := initLog(t, pemBytes, repo)
+
+	resultPath := writeRawResult(t, `{"format":"something-else/v1","gitleaksVersion":"v8.30.1","rulesDigest":"sha256:ab","findings":[]}`)
+
+	if err := Record(baseParams(logDir, repo, resultPath)); err == nil {
+		t.Fatal("expected an error for an unexpected result format")
+	}
+}
+
+func TestRecordRejectsEmptyGitleaksVersion(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	logDir := initLog(t, pemBytes, repo)
+
+	resultPath := writeRawResult(t, `{"format":"gatekeeper-scan/v1","gitleaksVersion":"","rulesDigest":"sha256:ab","findings":[]}`)
+
+	if err := Record(baseParams(logDir, repo, resultPath)); err == nil {
+		t.Fatal("expected an error for an empty gitleaksVersion")
+	}
+}
+
+func TestRecordRejectsRulesDigestWithoutSha256Prefix(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	logDir := initLog(t, pemBytes, repo)
+
+	resultPath := writeRawResult(t, `{"format":"gatekeeper-scan/v1","gitleaksVersion":"v8.30.1","rulesDigest":"md5:ab","findings":[]}`)
+
+	if err := Record(baseParams(logDir, repo, resultPath)); err == nil {
+		t.Fatal("expected an error for a rulesDigest without a sha256: prefix")
+	}
+}
+
+func TestRecordRejectsMalformedCommit(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	logDir := initLog(t, pemBytes, repo)
+	resultPath := writeResult(t, t.TempDir(), nil)
+
+	for name, commit := range map[string]string{
+		"too short":     strings.Repeat("a", 39),
+		"too long":      strings.Repeat("a", 41),
+		"not hex":       strings.Repeat("z", 40),
+		"not lowercase": strings.Repeat("A", 40),
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := baseParams(logDir, repo, resultPath)
+			p.Commit = commit
+			p.RunID = "commit-" + name
+			if err := Record(p); err == nil {
+				t.Fatalf("expected an error for commit %q", commit)
+			}
+		})
+	}
+}
+
+// TestRecordedEntryNeverContainsTestSecretValue runs a real "gatekeeper
+// scan" over a runtime-built, secret-shaped fixture (never a literal in
+// source) and checks that the raw secret value never reaches the signed
+// entry Record produces — only its sha256 fingerprint should.
+func TestRecordedEntryNeverContainsTestSecretValue(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	logDir := initLog(t, pemBytes, repo)
+
+	secret := fakeToken("gh"+"p_", 36)
+	scanDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(scanDir, "leak.txt"), []byte("token=\""+secret+"\"\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	resultPath := filepath.Join(t.TempDir(), "result.json")
+	cmd := exec.Command(gatekeeperBinForTests, "scan", "--source", scanDir, "--out", resultPath)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+			t.Fatalf("gatekeeper scan: %v (stderr: %s)", err, stderr.String())
+		}
+	}
+
+	data, err := os.ReadFile(resultPath)
+	if err != nil {
+		t.Fatalf("read result: %v", err)
+	}
+	var result engine.Result
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Findings) == 0 {
+		t.Fatalf("expected the fixture to produce at least one finding")
+	}
+	if bytes.Contains(data, []byte(secret)) {
+		t.Fatalf("gatekeeper scan's own result.json leaks the raw secret value")
+	}
+
+	if err := Record(baseParams(logDir, repo, resultPath)); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	entry, err := readEntry(logDir, 0)
+	if err != nil {
+		t.Fatalf("read entry: %v", err)
+	}
+	if bytes.Contains(entry, []byte(secret)) {
+		t.Fatalf("recorded entry leaks the raw secret value")
+	}
 }
