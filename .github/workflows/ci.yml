@@ -50,13 +50,29 @@ jobs:
           test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
           go vet ./...
 
-      # 4. ADR 0001: workflow_run и pull_request_target запрещены во всём репозитории
-      # (передают токен установки через данные из непроверенного кода PR, см. "Связанное" в ADR).
+      # 4. ADR 0001 запрещает два триггера во всём репозитории (передают токен
+      # установки через данные из непроверенного кода PR, см. "Связанное" в ADR).
+      # Слова собираются из частей, а не пишутся литералом в этом файле, чтобы
+      # шаг не находил сам себя при поиске по некомментарным строкам, и чтобы
+      # сообщение об ошибке их тоже не содержало.
       - name: Forbid dangerous workflow triggers
         run: |
           set -euo pipefail
-          if grep -rnE '^[[:space:]]*(workflow_run|pull_request_target):' .github/workflows/; then
-            echo "workflow_run/pull_request_target triggers are forbidden repo-wide (ADR 0001)" >&2
+          w1="workflow"; w1="${w1}_run"
+          w2="pull_request"; w2="${w2}_target"
+          pattern="${w1}|${w2}"
+
+          hit=0
+          shopt -s nullglob
+          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -f "$f" ] || continue
+            if grep -vE '^[[:space:]]*#' "$f" | grep -qE "$pattern"; then
+              echo "::error file=$f::forbidden CI trigger keyword found (see ADR 0001)"
+              hit=1
+            fi
+          done
+
+          if [ "$hit" -ne 0 ]; then
             exit 1
           fi
 
@@ -89,3 +105,30 @@ jobs:
       - name: Verify Production Compilation
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o ./bin/gateway ./cmd/api/main.go
+
+      # go test не встраивает список модульных зависимостей в собранный
+      # тестовый бинарник (runtime/debug.ReadBuildInfo видит 0 deps), поэтому
+      # поле gitleaksVersion в result.json проверяется здесь, на настоящем
+      # бинарнике из go build/go run, а не юнит-тестом internal/engine.
+      - name: Verify gitleaks version is embedded in scan result
+        run: |
+          set -euo pipefail
+          expected="$(go list -m -f '{{.Version}}' github.com/zricethezav/gitleaks/v8)"
+          out="${RUNNER_TEMP:-/tmp}/gatekeeper-selfscan.json"
+
+          # Exit code may be 0 (clean) or 1 (findings); only a real error (2) is fatal here.
+          set +e
+          go run ./cmd/gatekeeper scan --source . --out "$out"
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+            echo "::error::gatekeeper scan exited with code $code"
+            exit 1
+          fi
+
+          actual="$(sed -n 's/.*"gitleaksVersion": *"\([^"]*\)".*/\1/p' "$out" | head -n1)"
+          echo "expected=$expected actual=$actual"
+          if [ -z "$actual" ] || [ "$actual" != "$expected" ]; then
+            echo "::error::gitleaksVersion in result.json ($actual) does not match go.mod ($expected)"
+            exit 1
+          fi

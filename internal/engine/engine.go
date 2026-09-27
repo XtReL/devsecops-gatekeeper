@@ -43,6 +43,13 @@ type Result struct {
 // sanitized result: no timestamps, absolute paths, line numbers, or secret
 // values/fragments. The .git directory is not scanned.
 func Scan(ctx context.Context, dir string) (Result, error) {
+	// Fail secure: the evidence attestation (ADR 0001) pins the exact
+	// gitleaks version used, so a Result without it must not be produced.
+	version, err := gitleaksVersionFunc()
+	if err != nil {
+		return Result{}, err
+	}
+
 	rawFindings, err := detectSecrets(ctx, dir)
 	if err != nil {
 		return Result{}, err
@@ -64,7 +71,7 @@ func Scan(ctx context.Context, dir string) (Result, error) {
 
 	return Result{
 		Format:          "gatekeeper-scan/v1",
-		GitleaksVersion: gitleaksVersion(),
+		GitleaksVersion: version,
 		RulesDigest:     rulesDigest(),
 		Findings:        findings,
 	}, nil
@@ -77,6 +84,11 @@ func WriteSARIF(ctx context.Context, dir string, w io.Writer) error {
 	det, findings, err := scanWithDetector(ctx, dir)
 	if err != nil {
 		return err
+	}
+	// gitleaks' SarifReporter puts Finding.Secret verbatim into the result's
+	// code snippet; redact it before it ever reaches an io.Writer.
+	for i := range findings {
+		findings[i].Redact(100)
 	}
 	reporter := &report.SarifReporter{OrderedRules: det.Config.GetOrderedRules()}
 	return reporter.Write(nopWriteCloser{w}, findings)
@@ -137,17 +149,29 @@ func sortAndDedupe(findings []Finding) []Finding {
 	return out
 }
 
-func gitleaksVersion() string {
+// gitleaksVersionFunc resolves the gitleaks module version and is a package
+// variable so engine_test.go can substitute it: binaries produced by `go
+// test` do not embed the module dependency list the way `go build` binaries
+// do, so runtime/debug.ReadBuildInfo cannot be exercised meaningfully in this
+// package's own unit tests. The real resolver is checked end-to-end in CI
+// (see .github/workflows/ci.yml, "Verify gitleaks version is embedded in
+// scan result"), which runs an actual `go build`/`go run` binary.
+var gitleaksVersionFunc = readGitleaksVersionFromBuildInfo
+
+func readGitleaksVersionFromBuildInfo() (string, error) {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return ""
+		return "", fmt.Errorf("engine: runtime/debug.ReadBuildInfo unavailable")
 	}
 	for _, dep := range info.Deps {
 		if dep.Path == gitleaksModulePath {
-			return dep.Version
+			if dep.Version == "" {
+				return "", fmt.Errorf("engine: gitleaks module version is empty in build info")
+			}
+			return dep.Version, nil
 		}
 	}
-	return ""
+	return "", fmt.Errorf("engine: gitleaks module not found in build info")
 }
 
 func rulesDigest() string {

@@ -1,13 +1,25 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// TestMain stubs the gitleaks version resolver for every test in this
+// package: go test binaries don't embed the module dependency list (see the
+// comment on gitleaksVersionFunc), so the real resolver would fail here
+// regardless of the directory being scanned. The real resolver is exercised
+// by an actual go build/run binary in CI instead.
+func TestMain(m *testing.M) {
+	gitleaksVersionFunc = func() (string, error) { return "v8.30.1", nil }
+	os.Exit(m.Run())
+}
 
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
@@ -153,5 +165,39 @@ func TestResultFieldsAreStableAcrossRuns(t *testing.T) {
 	}
 	if !strings.HasPrefix(r.RulesDigest, "sha256:") {
 		t.Fatalf("unexpected rulesDigest: %q", r.RulesDigest)
+	}
+}
+
+func TestScanFailsWhenGitleaksVersionIsUnavailable(t *testing.T) {
+	original := gitleaksVersionFunc
+	gitleaksVersionFunc = func() (string, error) { return "", errors.New("build info unavailable") }
+	defer func() { gitleaksVersionFunc = original }()
+
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "readme.txt"), "nothing to see here\n")
+
+	if _, err := Scan(context.Background(), dir); err == nil {
+		t.Fatalf("expected Scan to fail when the gitleaks version cannot be determined")
+	}
+}
+
+func TestWriteSARIFRedactsTheSecretValue(t *testing.T) {
+	dir := t.TempDir()
+	token := githubPAT()
+	writeFile(t, filepath.Join(dir, "leak.txt"), "token=\""+token+"\"\n")
+
+	var buf bytes.Buffer
+	if err := WriteSARIF(context.Background(), dir, &buf); err != nil {
+		t.Fatalf("write sarif: %v", err)
+	}
+
+	if buf.Len() == 0 {
+		t.Fatalf("expected a non-empty SARIF report")
+	}
+	if strings.Contains(buf.String(), token) {
+		t.Fatalf("SARIF report must never contain the secret value")
+	}
+	if !strings.Contains(buf.String(), "REDACTED") {
+		t.Fatalf("expected the SARIF snippet to be redacted, got: %s", buf.String())
 	}
 }
