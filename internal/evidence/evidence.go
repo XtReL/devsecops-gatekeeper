@@ -55,7 +55,7 @@ func Init(dir, repo, keyPath string) error {
 		return fmt.Errorf("evidence: init log: %w", err)
 	}
 	gitkeep := filepath.Join(dir, "entries", ".gitkeep")
-	if err := os.WriteFile(gitkeep, nil, 0o644); err != nil {
+	if err := os.WriteFile(gitkeep, nil, 0o600); err != nil {
 		return fmt.Errorf("evidence: write entries/.gitkeep: %w", err)
 	}
 	return nil
