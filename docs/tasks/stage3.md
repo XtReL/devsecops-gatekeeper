@@ -131,8 +131,7 @@ permissions:
 - `needs: scan`;
 - `if: always() && (needs.scan.outputs.code == '0' || needs.scan.outputs.code == '1') && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)` — FAILED-результаты тоже записываются;
 - `environment: gatekeeper-evidence`, `permissions: contents: write`;
-- шаги только из чек-листа ADR: checkout кода (`persist-credentials: false`), setup-go, сборка, `download-artifact`, checkout ветки `gatekeeper-evidence` в `path: evidence` с `persist-credentials: true` и `fetch-depth: 0`, затем `scripts/evidence-push.sh` с `GATEKEEPER_SIGNING_KEY: ${{ secrets.GATEKEEPER_SIGNING_KEY }}`;
-- `upload-artifact` файла `evidence/checkpoint` как дополнительная копия.
+- шаги только из чек-листа ADR: checkout кода (`persist-credentials: false`), setup-go, сборка, `download-artifact`, checkout ветки `gatekeeper-evidence` в `path: evidence` с `persist-credentials: true` и `fetch-depth: 0`, затем `scripts/evidence-push.sh` с `GATEKEEPER_SIGNING_KEY: ${{ secrets.GATEKEEPER_SIGNING_KEY }}`.
 
 ### Тесты
 - `record` на временном журнале: два вызова с одним `run_id`/`run_attempt` → одна запись; другой `run_id` → две; `verify.Log` из trust-core проходит.
