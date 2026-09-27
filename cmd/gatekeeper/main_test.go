@@ -2,11 +2,16 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"devsecops-gatekeeper/internal/engine"
@@ -125,5 +130,110 @@ func TestRunScanMissingFlagsExitsTwo(t *testing.T) {
 func TestRunVersion(t *testing.T) {
 	if code, stderr := runGatekeeper(t, "version"); code != 0 {
 		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+}
+
+// genPEMKey writes a fresh Ed25519 private key as PKCS#8 PEM, in memory and
+// (only for evidence-init's --key flag, never for record's GATEKEEPER_SIGNING_KEY)
+// to a file under dir.
+func genPEMKey(t *testing.T, dir, name string) ([]byte, string) {
+	t.Helper()
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		t.Fatalf("marshal key: %v", err)
+	}
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, pemBytes, 0o600); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
+	return pemBytes, path
+}
+
+// runGatekeeperEnv is runGatekeeper with extra environment variables, used
+// to pass GATEKEEPER_SIGNING_KEY the way the record command expects it:
+// through the environment, never a file (ADR 0001).
+func runGatekeeperEnv(t *testing.T, env []string, args ...string) (code int, stderr string) {
+	t.Helper()
+	cmd := exec.Command(gatekeeperBin, args...)
+	cmd.Env = append(os.Environ(), env...)
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	err := cmd.Run()
+	if err == nil {
+		return 0, errBuf.String()
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode(), errBuf.String()
+	}
+	t.Fatalf("run gatekeeper %v: %v (stderr: %s)", args, err, errBuf.String())
+	return -1, errBuf.String()
+}
+
+func TestRunEvidenceInitCreatesLogAndGitkeep(t *testing.T) {
+	keyDir := t.TempDir()
+	_, keyPath := genPEMKey(t, keyDir, "log.key")
+	evidenceDir := filepath.Join(t.TempDir(), "evidence")
+
+	code, stderr := runGatekeeper(t, "evidence-init", "--evidence", evidenceDir, "--repo", "XtReL/devsecops-gatekeeper", "--key", keyPath)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(evidenceDir, "checkpoint")); err != nil {
+		t.Fatalf("expected checkpoint file: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(evidenceDir, "entries", ".gitkeep")); err != nil {
+		t.Fatalf("expected entries/.gitkeep: %v", err)
+	}
+}
+
+func TestRunRecordExitCodes(t *testing.T) {
+	keyDir := t.TempDir()
+	pemBytes, keyPath := genPEMKey(t, keyDir, "log.key")
+	evidenceDir := filepath.Join(t.TempDir(), "evidence")
+	repo := "XtReL/devsecops-gatekeeper"
+
+	if code, stderr := runGatekeeper(t, "evidence-init", "--evidence", evidenceDir, "--repo", repo, "--key", keyPath); code != 0 {
+		t.Fatalf("evidence-init: expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+
+	scanSource := t.TempDir()
+	if err := os.WriteFile(filepath.Join(scanSource, "readme.txt"), []byte("nothing to see here\n"), 0o644); err != nil {
+		t.Fatalf("write scan fixture: %v", err)
+	}
+	out := filepath.Join(t.TempDir(), "result.json")
+	if code, stderr := runGatekeeper(t, "scan", "--source", scanSource, "--out", out); code != 0 {
+		t.Fatalf("scan: expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+
+	env := []string{"GATEKEEPER_SIGNING_KEY=" + string(pemBytes)}
+	recordArgs := []string{
+		"record",
+		"--result", out,
+		"--evidence", evidenceDir,
+		"--repo", repo,
+		"--commit", strings.Repeat("f", 40),
+		"--run-url", "https://github.com/" + repo + "/actions/runs/1",
+		"--run-id", "9001",
+		"--run-attempt", "1",
+	}
+
+	if code, stderr := runGatekeeperEnv(t, env, recordArgs...); code != 0 {
+		t.Fatalf("first record: expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+	if code, stderr := runGatekeeperEnv(t, env, recordArgs...); code != 3 {
+		t.Fatalf("duplicate record: expected exit code 3, got %d (stderr: %s)", code, stderr)
+	}
+
+	// No GATEKEEPER_SIGNING_KEY at all: the record command must fail, not
+	// fall back to reading a key from disk.
+	otherArgs := append(append([]string{}, recordArgs[:len(recordArgs)-4]...), "--run-id", "9002", "--run-attempt", "1")
+	if code, stderr := runGatekeeper(t, otherArgs...); code != 2 {
+		t.Fatalf("record without signing key: expected exit code 2, got %d (stderr: %s)", code, stderr)
 	}
 }

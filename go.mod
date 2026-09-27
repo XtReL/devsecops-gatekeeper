@@ -3,6 +3,7 @@ module devsecops-gatekeeper
 go 1.25.8
 
 require (
+	github.com/XtReL/trust-core v0.1.0
 	github.com/authzed/authzed-go v1.10.0
 	github.com/authzed/grpcutil v0.0.0-20260105210157-e237581949c2
 	github.com/go-redis/redis/v8 v8.11.5

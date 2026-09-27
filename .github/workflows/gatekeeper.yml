@@ -1,0 +1,108 @@
+name: Gatekeeper Action
+
+# Evidence is only ever written on a push to the default branch (ADR 0001,
+# decision A): pull_request runs still scan, but the record job's own `if`
+# below is what actually enforces that, so a PR from a fork can never reach
+# the signing key.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.scan.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build gatekeeper
+        run: GOFLAGS=-mod=readonly go build -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper
+
+      - name: Scan
+        id: scan
+        run: |
+          set +e
+          "$RUNNER_TEMP/gatekeeper" scan --source . --out "$RUNNER_TEMP/result.json"
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Upload scan result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gatekeeper-result
+          path: ${{ runner.temp }}/result.json
+
+      - name: Fail if the scan itself errored
+        if: steps.scan.outputs.code != '0' && steps.scan.outputs.code != '1'
+        run: exit 1
+
+  record:
+    name: Record evidence
+    needs: scan
+    # FAILED scans are recorded too (ADR 0001): only a real scan error (exit
+    # 2, already failed the job above) or a non-default-branch/non-push event
+    # skips this job.
+    if: always() && (needs.scan.outputs.code == '0' || needs.scan.outputs.code == '1') && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    environment: gatekeeper-evidence
+    permissions:
+      contents: write
+    steps:
+      # ADR 0001's checklist for this job allows only actions/checkout,
+      # actions/setup-go and actions/download-artifact. No npm/pip/curl|sh,
+      # no submodules.
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build gatekeeper
+        run: GOFLAGS=-mod=readonly go build -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper
+
+      - name: Download scan result
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: gatekeeper-result
+          path: ${{ runner.temp }}
+
+      - name: Checkout gatekeeper-evidence
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gatekeeper-evidence
+          path: evidence
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Record evidence
+        env:
+          GATEKEEPER_SIGNING_KEY: ${{ secrets.GATEKEEPER_SIGNING_KEY }}
+          GATEKEEPER_BIN: ${{ runner.temp }}/gatekeeper
+          RESULT_FILE: ${{ runner.temp }}/result.json
+          EVIDENCE_DIR: evidence
+          REPO: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: scripts/evidence-push.sh
