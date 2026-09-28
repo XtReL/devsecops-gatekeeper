@@ -15,21 +15,35 @@
   Криптографически неотличимы друг от друга; для unplanned нужен внешний
   доверенный чекпоинт (см. ниже) и решение проверяющего.
 
-Везде ниже `k` — номер новой эпохи (текущая эпоха + 1), `OWNER/REPO` — этот репозиторий.
+Везде ниже `j` — номер текущей эпохи (той, что ротируется), `k = j + 1` —
+номер новой эпохи, `OWNER/REPO` — этот репозиторий.
+
+Формула для произвольной эпохи `n` (подставляйте `j` в шагах 1–2 ниже,
+`k` — в шаге 3 и в `-name`/`-new-key` везде): origin — эпоха 1 →
+`github.com/OWNER/REPO/gatekeeper-evidence/v1`, эпоха `n ≥ 2` →
+`github.com/OWNER/REPO/gatekeeper-evidence/v1/e<n>`; публичный ключ в
+репозитории — эпоха 1 → `.gatekeeper/evidence.pub`, эпоха `n ≥ 2` →
+`.gatekeeper/keys/e<n>.pub`. Это то же правило, что `Target` в
+`internal/evidence` и `event.EpochOrigin` в trust-core применяют к коду —
+здесь оно нужно вручную, так как ротация ещё не установила новую эпоху
+текущей.
 
 ## 0. Общее для обоих видов
 
 1. Новый ключ — генерируется на устройстве владельца, приватный ключ никогда не
-   покидает устройство и не коммитится:
+   покидает устройство и не коммитится. `-name` — origin **новой** эпохи `k`
+   (она всегда ≥ 2, поэтому всегда с суффиксом `/e<k>`): иначе `vkey` в выводе
+   не совпадёт с тем, что действительно будет подписывать чекпоинты новой
+   эпохи, и свидетели получат неверный note-verifier key.
 
    ```bash
-   trustcore keygen -out e<k> -name "github.com/OWNER/REPO/gatekeeper-evidence/v1"
+   trustcore keygen -out e<k> -name "github.com/OWNER/REPO/gatekeeper-evidence/v1/e<k>"
    ```
 
    Выводит `e<k>.key` (приватный), `e<k>.pub` (публичный), `key id` и `vkey`
    (note-verifier key для свидетелей).
 
-2. Свежий чекаут текущей эпохи (той, что ротируется):
+2. Свежий чекаут текущей эпохи `j` (той, что ротируется):
 
    ```bash
    gatekeeper evidence-target --repo OWNER/REPO   # branch=..., origin=...
@@ -37,20 +51,37 @@
      https://github.com/OWNER/REPO.git evidence-current
    ```
 
+   (Чекаут `main`, с которого запущена эта команда, должен быть ещё на
+   эпохе `j` — `evidence-target` печатает её ветку/origin только пока
+   `.gatekeeper/evidence.json` не обновлён на `k`, см. шаг 3.)
+
 ## 1. Planned: владелец старого ключа участвует
 
 Точка заморозки — текущее проверенное состояние старой эпохи; генезис
 подписан обоими ключами.
 
 ```bash
+# -from-origin и -from-pub — эпохи j (текущей), не k: по формуле выше,
+# эпоха 1 → github.com/OWNER/REPO/gatekeeper-evidence/v1 и
+# .gatekeeper/evidence.pub; эпоха j ≥ 2 →
+# github.com/OWNER/REPO/gatekeeper-evidence/v1/e<j> и
+# .gatekeeper/keys/e<j>.pub. Пример для эпохи 1 → 2:
 trustcore rotate \
   -from evidence-current \
-  -from-origin "$(gatekeeper evidence-target --repo OWNER/REPO | sed -n 's/^origin=//p')" \
+  -from-origin "github.com/OWNER/REPO/gatekeeper-evidence/v1" \
   -from-pub .gatekeeper/evidence.pub \
   -from-key /path/to/old.key \
   -new-key e<k>.key \
   -to evidence-e<k> \
   -note "planned rotation: <причина>"
+```
+
+`-from-origin` можно получить и так же, как в шаге 0.2 — из чекаута `main`
+на эпохе `j` (эквивалентно формуле выше, пока `.gatekeeper/evidence.json`
+не обновлён):
+
+```bash
+-from-origin "$(gatekeeper evidence-target --repo OWNER/REPO | sed -n 's/^origin=//p')"
 ```
 
 Проверьте вывод: `rotation: planned`, `epoch: <k>`, `key id`, `vkey`.
@@ -67,15 +98,22 @@ trustcore rotate \
 до момента потери/компрометации):
 
 ```bash
+# -from-origin и -from-pub — снова эпохи j, той же формулой, что в п. 1.
+# Пример для эпохи 1 → 2:
 trustcore rotate \
   -from evidence-current \
-  -from-origin "$(gatekeeper evidence-target --repo OWNER/REPO | sed -n 's/^origin=//p')" \
+  -from-origin "github.com/OWNER/REPO/gatekeeper-evidence/v1" \
   -from-pub .gatekeeper/evidence.pub \
   -trusted-checkpoint /path/to/trusted-checkpoint \
   -new-key e<k>.key \
   -to evidence-e<k> \
   -note "unplanned rotation: <причина>"
 ```
+
+`-from-origin` можно получить и так же, как в шаге 0.2 (см. п. 1) — из
+чекаута `main` на эпохе `j`, если он ещё доступен и ему можно доверять
+(для unplanned предпочтительнее явная формула выше: чекаут `main` мог быть
+затронут тем же событием, что и потеря/компрометация ключа).
 
 Вывод содержит `rotation: unplanned` и предупреждение: «verifiers must
 confirm this key id with you out of band and set acceptUnplanned». Запишите
