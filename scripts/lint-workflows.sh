@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # lint-workflows.sh — ADR 0001 forbids workflow_run and pull_request_target
 # anywhere in .github/workflows/ (they pass an installation token through
-# data from unreviewed PR code; see "Связанное" in the ADR). Used by
-# ci.yml's "Forbid dangerous workflow triggers" step and by scripts/check.sh.
+# data from unreviewed PR code; see "Связанное" in the ADR). Also checked in
+# examples/*.yml (docs/tasks/distribution.md #4): the client template must
+# not teach a client to use them either. Used by ci.yml's "Forbid dangerous
+# workflow triggers" step and by scripts/check.sh.
 #
 # The words are assembled from parts, not written literally in this file,
 # so this step never flags itself when it greps non-comment lines, and so
@@ -18,7 +20,7 @@ pattern="${w1}|${w2}"
 
 hit=0
 shopt -s nullglob
-for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+for f in .github/workflows/*.yml .github/workflows/*.yaml examples/*.yml examples/*.yaml; do
   [ -f "$f" ] || continue
   if grep -vE '^[[:space:]]*#' "$f" | grep -qE "$pattern"; then
     echo "::error file=$f::forbidden CI trigger keyword found (see ADR 0001)"

@@ -29,6 +29,10 @@ Gatekeeper в режиме Action работает в CI клиента: код 
 
 ### Обязательный чек-лист задания `record`
 
+Расширенный чек-лист — `docs/adr/0003-distribution.md`, раздел «Чек-лист
+задания `record` у клиента» (composite action, ключ только в `env`
+последнего шага, никакой сборки в этом задании).
+
 Задание, которому доступен ключ:
 1. Запускается только при `push` в ветку по умолчанию: `if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)`.
 2. `environment: gatekeeper-evidence`, `permissions: contents: write` и больше ничего. `id-token: write` появится только на этапе 6.
