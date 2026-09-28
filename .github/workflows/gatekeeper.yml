@@ -246,15 +246,21 @@ jobs:
           BRANCH: ${{ steps.target.outputs.branch }}
         run: |
           set -euo pipefail
-          git config --global user.name "gatekeeper-selftest"
-          git config --global user.email "gatekeeper-selftest@example.invalid"
+          # Identity scoped to this one throwaway repo only (-c, not
+          # --global/--system): a job runner may be a developer's own
+          # machine, and this must never touch their real git config.
+          git_id() {
+            git -C "$WORK/selftest-init" -c user.name="gatekeeper-selftest" -c user.email="gatekeeper-selftest@example.invalid" "$@"
+          }
 
           git init --bare -q "$WORK/selftest-origin.git"
 
           git clone -q "$WORK/selftest-origin.git" "$WORK/selftest-init"
           (cd "$WORK/selftest-init" && git checkout --orphan "$BRANCH" -q && git rm -rf . -q >/dev/null 2>&1 || true)
           "$GATEKEEPER_BIN" evidence-init --evidence "$WORK/selftest-init" --repo "$REPO" --key "$WORK/selftest-signer.key"
-          (cd "$WORK/selftest-init" && git add -A && git commit -q -m init && git push -q origin "$BRANCH")
+          git_id add -A
+          git_id commit -q -m init
+          git_id push -q origin "$BRANCH"
 
           git clone -q --branch "$BRANCH" --single-branch "$WORK/selftest-origin.git" "$WORK/selftest-evidence"
 
