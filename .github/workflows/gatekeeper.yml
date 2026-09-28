@@ -24,29 +24,28 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-
+      # Dogfooding (ADR 0003): the action's own action.yml, via uses: ./.
       - name: Build gatekeeper
-        run: GOFLAGS=-mod=readonly go build -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper
+        id: build
+        uses: ./
+        with:
+          mode: build
 
       - name: Scan
         id: scan
-        run: |
-          set +e
-          "$RUNNER_TEMP/gatekeeper" scan --source . --out "$RUNNER_TEMP/result.json"
-          code=$?
-          set -e
-          echo "code=$code" >> "$GITHUB_OUTPUT"
+        uses: ./
+        with:
+          mode: scan
+          gatekeeper: ${{ steps.build.outputs.gatekeeper }}
 
-      - name: Upload scan result
+      - name: Upload scan result and binary
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gatekeeper-result
-          path: ${{ runner.temp }}/result.json
+          path: |
+            ${{ steps.scan.outputs.result }}
+            ${{ steps.build.outputs.gatekeeper }}
 
       # Fails the job on ANY non-zero exit: findings (1) and a scan error
       # (2) are both a red "scan" job, with a message telling them apart.
@@ -56,8 +55,10 @@ jobs:
       # result.
       - name: Fail if scan found leaks or errored
         if: steps.scan.outputs.code != '0'
+        env:
+          CODE: ${{ steps.scan.outputs.code }}
         run: |
-          code="${{ steps.scan.outputs.code }}"
+          code="$CODE"
           if [ "$code" = "1" ]; then
             echo "::error::gatekeeper scan found leaked secrets (see the gatekeeper-result artifact)"
           else
@@ -78,53 +79,211 @@ jobs:
       contents: write
     steps:
       # ADR 0001's checklist for this job allows only actions/checkout,
-      # actions/setup-go and actions/download-artifact. No npm/pip/curl|sh,
-      # no submodules.
+      # actions/download-artifact and this action (uses: ./). No Go setup,
+      # no build, no npm/pip/curl|sh, no submodules (ADR 0003).
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Build gatekeeper
-        run: GOFLAGS=-mod=readonly go build -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper
-
-      - name: Resolve evidence target
-        id: evidence-target
-        run: |
-          "$RUNNER_TEMP/gatekeeper" evidence-target --repo "${{ github.repository }}" >> "$GITHUB_OUTPUT"
-
-      - name: Download scan result
+      - name: Download scan result and binary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: gatekeeper-result
           path: ${{ runner.temp }}
 
+      - name: Resolve evidence target
+        id: target
+        uses: ./
+        with:
+          mode: target
+          gatekeeper: ${{ runner.temp }}/gatekeeper
+
       - name: Checkout evidence branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ steps.evidence-target.outputs.branch }}
+          ref: ${{ steps.target.outputs.branch }}
           path: evidence
           persist-credentials: true
           fetch-depth: 0
 
+      # Key only in env: of this one step (ADR 0003): build and module
+      # download already happened, without the key, in the scan job above.
       - name: Record evidence
+        uses: ./
+        with:
+          mode: record
+          gatekeeper: ${{ runner.temp }}/gatekeeper
+          result: ${{ runner.temp }}/result.json
+          evidence: evidence
         env:
           GATEKEEPER_SIGNING_KEY: ${{ secrets.GATEKEEPER_SIGNING_KEY }}
-          GATEKEEPER_BIN: ${{ runner.temp }}/gatekeeper
-          RESULT_FILE: ${{ runner.temp }}/result.json
-          EVIDENCE_DIR: evidence
-          EVIDENCE_BRANCH: ${{ steps.evidence-target.outputs.branch }}
+
+  action-selftest:
+    name: action self-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build gatekeeper
+        id: build
+        uses: ./
+        with:
+          mode: build
+
+      - name: Prepare test directories
+        env:
+          WORK: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORK/selftest-dirty" "$WORK/selftest-clean"
+
+          # A test token assembled from parts at runtime, never written as a
+          # literal secret-looking string (CLAUDE.md), so gitleaks/GitGuardian
+          # never flag this workflow file itself. The body is a SHA-256 hash,
+          # not a repeated pattern: gitleaks' github-pat rule also requires
+          # entropy >= 3, which "a1" x18 (entropy 1.0) fails to clear — a hash
+          # digest clears it (entropy ~3.6, verified against gitleaks v8.30.1).
+          body="$(printf 'gatekeeper-selftest' | sha256sum | cut -c1-36)"
+          token="gh"
+          token="${token}p_"
+          token="${token}${body}"
+          printf 'token = "%s"\n' "$token" >"$WORK/selftest-dirty/secret.txt"
+
+          printf 'nothing to see here\n' >"$WORK/selftest-clean/readme.txt"
+
+      - name: Scan dirty directory (expect findings)
+        id: scan-dirty
+        uses: ./
+        with:
+          mode: scan
+          gatekeeper: ${{ steps.build.outputs.gatekeeper }}
+          source: ${{ runner.temp }}/selftest-dirty
+
+      - name: Check dirty scan found a finding
+        env:
+          CODE: ${{ steps.scan-dirty.outputs.code }}
+        run: |
+          if [ "$CODE" != "1" ]; then
+            echo "::error::expected exit code 1 (findings) scanning the dirty test directory, got '$CODE'"
+            exit 1
+          fi
+
+      - name: Scan clean directory (expect no findings)
+        id: scan-clean
+        uses: ./
+        with:
+          mode: scan
+          gatekeeper: ${{ steps.build.outputs.gatekeeper }}
+          source: ${{ runner.temp }}/selftest-clean
+
+      - name: Check clean scan found nothing
+        env:
+          CODE: ${{ steps.scan-clean.outputs.code }}
+        run: |
+          if [ "$CODE" != "0" ]; then
+            echo "::error::expected exit code 0 (clean) scanning the clean test directory, got '$CODE'"
+            exit 1
+          fi
+
+      - name: Resolve evidence target (epoch 1)
+        id: target
+        uses: ./
+        with:
+          mode: target
+          gatekeeper: ${{ steps.build.outputs.gatekeeper }}
+
+      - name: Check evidence target for epoch 1
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
           REPO: ${{ github.repository }}
-          COMMIT: ${{ github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          RUN_ID: ${{ github.run_id }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-        run: scripts/evidence-push.sh
+        run: |
+          if [ "$BRANCH" != "gatekeeper-evidence" ]; then
+            echo "::error::expected branch 'gatekeeper-evidence' for epoch 1, got '$BRANCH'"
+            exit 1
+          fi
+          expected_origin="github.com/$REPO/gatekeeper-evidence/v1"
+          if [ "$ORIGIN" != "$expected_origin" ]; then
+            echo "::error::expected origin '$expected_origin' for epoch 1, got '$ORIGIN'"
+            exit 1
+          fi
+
+      # Go is still on PATH here: actions/setup-go (run inside mode: build,
+      # above) adds it via $GITHUB_PATH, which persists for the rest of this
+      # job.
+      - name: Build trustcore
+        env:
+          WORK: ${{ runner.temp }}
+        run: GOFLAGS=-mod=readonly go build -o "$WORK/trustcore" github.com/XtReL/trust-core/cmd/trustcore
+
+      # A throwaway Ed25519 key, generated in this job and never used
+      # anywhere else. Unlike the production signing key, it may live on
+      # disk here (this is a self-test, not mode: record's real key
+      # handling) — but only inside this job's own $RUNNER_TEMP.
+      - name: Generate a throwaway signing key
+        id: key
+        env:
+          WORK: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          openssl genpkey -algorithm ed25519 -out "$WORK/selftest-signer.key" 2>/dev/null
+          openssl pkey -in "$WORK/selftest-signer.key" -pubout -out "$WORK/selftest-signer.pub" 2>/dev/null
+          {
+            echo "pem<<GATEKEEPER_SELFTEST_KEY_EOF"
+            cat "$WORK/selftest-signer.key"
+            echo "GATEKEEPER_SELFTEST_KEY_EOF"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Bootstrap a local bare evidence repo
+        env:
+          GATEKEEPER_BIN: ${{ steps.build.outputs.gatekeeper }}
+          WORK: ${{ runner.temp }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ steps.target.outputs.branch }}
+        run: |
+          set -euo pipefail
+          # Identity scoped to this one throwaway repo only (-c, not
+          # --global/--system): a job runner may be a developer's own
+          # machine, and this must never touch their real git config.
+          git_id() {
+            git -C "$WORK/selftest-init" -c user.name="gatekeeper-selftest" -c user.email="gatekeeper-selftest@example.invalid" "$@"
+          }
+
+          git init --bare -q "$WORK/selftest-origin.git"
+
+          git clone -q "$WORK/selftest-origin.git" "$WORK/selftest-init"
+          (cd "$WORK/selftest-init" && git checkout --orphan "$BRANCH" -q && git rm -rf . -q >/dev/null 2>&1 || true)
+          "$GATEKEEPER_BIN" evidence-init --evidence "$WORK/selftest-init" --repo "$REPO" --key "$WORK/selftest-signer.key"
+          git_id add -A
+          git_id commit -q -m init
+          git_id push -q origin "$BRANCH"
+
+          git clone -q --branch "$BRANCH" --single-branch "$WORK/selftest-origin.git" "$WORK/selftest-evidence"
+
+      - name: Record via the action (mode=record)
+        uses: ./
+        with:
+          mode: record
+          gatekeeper: ${{ steps.build.outputs.gatekeeper }}
+          result: ${{ steps.scan-clean.outputs.result }}
+          evidence: ${{ runner.temp }}/selftest-evidence
+        env:
+          GATEKEEPER_SIGNING_KEY: ${{ steps.key.outputs.pem }}
+
+      - name: trustcore verify
+        env:
+          WORK: ${{ runner.temp }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+        run: |
+          "$WORK/trustcore" verify \
+            -log "$WORK/selftest-evidence" \
+            -origin "$ORIGIN" \
+            -log-pub "$WORK/selftest-signer.pub" \
+            -attester-pub "$WORK/selftest-signer.pub"
 
   evidence-push-selftest:
     name: evidence-push.sh self-test

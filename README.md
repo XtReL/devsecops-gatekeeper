@@ -17,6 +17,14 @@
 | Авторизация | `iam/schema.zed`, `internal/iam` | Модель доступа SpiceDB; ресурс — числовой ID репозитория GitHub |
 | Биллинг | `internal/billing` | Вебхуки Stripe |
 
+## Подключение
+
+Основной способ использовать Gatekeeper — GitHub Action из корня этого
+репозитория (`action.yml`), с подписанными аттестациями каждой проверки
+(`docs/adr/0003-distribution.md`). Инструкция по разовой настройке —
+[`docs/onboarding.md`](docs/onboarding.md), готовый к копированию шаблон
+workflow — [`examples/client-workflow.yml`](examples/client-workflow.yml).
+
 ## Запуск локально
 
 ```bash

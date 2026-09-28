@@ -1,0 +1,182 @@
+name: Gatekeeper Evidence
+description: Scans for leaked secrets and records signed, verifiable scan evidence in an append-only transparency log.
+branding:
+  icon: shield
+  color: green
+
+# Security notes (ADR 0001, ADR 0003; see CLAUDE.md):
+# - No input and no github.* context value is ever interpolated into a
+#   run: script body via ${{ ... }}. Each one is passed through a step's
+#   own env: and read back as "$VAR".
+# - GATEKEEPER_SIGNING_KEY is deliberately NOT declared as an input below.
+#   It is read only from the process environment, only in mode: record,
+#   which the caller sets via env: on its own uses: step — composite
+#   action steps inherit env set on the calling step. It is never logged,
+#   never written to disk, never passed to another step.
+# - mode: record never installs Go, downloads modules, or builds anything;
+#   it only runs the binary and script that mode: build already produced.
+
+inputs:
+  mode:
+    description: 'Mode to run: build | scan | target | record'
+    required: true
+  source:
+    description: 'Directory to scan (mode: scan)'
+    required: false
+    default: '.'
+  gatekeeper:
+    description: 'Path to the gatekeeper binary (mode: scan, target, record)'
+    required: false
+    default: ''
+  result:
+    description: 'Path to result.json (mode: record)'
+    required: false
+    default: ''
+  evidence:
+    description: 'Evidence log directory (mode: record)'
+    required: false
+    default: 'evidence'
+  config:
+    description: 'Path to the epoch config (mode: target, record)'
+    required: false
+    default: '.gatekeeper/evidence.json'
+
+outputs:
+  gatekeeper:
+    description: 'Path to the built gatekeeper binary (mode: build)'
+    value: ${{ steps.build.outputs.gatekeeper }}
+  result:
+    description: 'Path to result.json (mode: scan)'
+    value: ${{ steps.scan.outputs.result }}
+  code:
+    description: 'gatekeeper scan exit code: 0 clean, 1 findings, 2 error (mode: scan)'
+    value: ${{ steps.scan.outputs.code }}
+  branch:
+    description: 'Evidence branch for the configured epoch (mode: target)'
+    value: ${{ steps.target.outputs.branch }}
+  origin:
+    description: 'Trust Core log origin for the configured epoch (mode: target)'
+    value: ${{ steps.target.outputs.origin }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate mode
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+      run: |
+        case "$MODE" in
+          build|scan|target|record) ;;
+          *)
+            echo "::error::gatekeeper: unknown mode '$MODE' (expected build, scan, target, or record)"
+            exit 1
+            ;;
+        esac
+
+    # ---- mode: build (no secrets) -----------------------------------
+    - name: Set up Go (mode=build)
+      if: inputs.mode == 'build'
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        cache-dependency-path: ${{ github.action_path }}/go.sum
+
+    - name: Build gatekeeper (mode=build)
+      if: inputs.mode == 'build'
+      id: build
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        start_s=$(date +%s)
+        CGO_ENABLED=0 GOFLAGS=-mod=readonly go build -trimpath -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper
+        end_s=$(date +%s)
+        echo "gatekeeper build: $((end_s - start_s)) s" >> "$GITHUB_STEP_SUMMARY"
+        echo "gatekeeper=$RUNNER_TEMP/gatekeeper" >> "$GITHUB_OUTPUT"
+
+    # ---- mode: scan (no secrets) --------------------------------------
+    # Never fails on findings: the caller's own workflow decides after
+    # looking at the "code" output and the uploaded result.
+    - name: Make gatekeeper executable (mode=scan)
+      if: inputs.mode == 'scan'
+      shell: bash
+      env:
+        GATEKEEPER_BIN: ${{ inputs.gatekeeper }}
+      run: chmod +x "$GATEKEEPER_BIN"
+
+    - name: Scan (mode=scan)
+      if: inputs.mode == 'scan'
+      id: scan
+      shell: bash
+      env:
+        GATEKEEPER_BIN: ${{ inputs.gatekeeper }}
+        SOURCE: ${{ inputs.source }}
+      run: |
+        set +e
+        "$GATEKEEPER_BIN" scan --source "$SOURCE" --out "$RUNNER_TEMP/result.json"
+        code=$?
+        set -e
+        echo "result=$RUNNER_TEMP/result.json" >> "$GITHUB_OUTPUT"
+        echo "code=$code" >> "$GITHUB_OUTPUT"
+
+    # ---- mode: target (no secrets) ------------------------------------
+    - name: Make gatekeeper executable (mode=target)
+      if: inputs.mode == 'target'
+      shell: bash
+      env:
+        GATEKEEPER_BIN: ${{ inputs.gatekeeper }}
+      run: chmod +x "$GATEKEEPER_BIN"
+
+    - name: Resolve evidence target (mode=target)
+      if: inputs.mode == 'target'
+      id: target
+      shell: bash
+      env:
+        GATEKEEPER_BIN: ${{ inputs.gatekeeper }}
+        REPO: ${{ github.repository }}
+        CONFIG: ${{ inputs.config }}
+      run: |
+        "$GATEKEEPER_BIN" evidence-target --repo "$REPO" --config "$CONFIG" >> "$GITHUB_OUTPUT"
+
+    # ---- mode: record (the only mode that ever sees the signing key) --
+    # No actions/setup-go, no module download, no build here (ADR 0003):
+    # only the already-built binary and evidence-push.sh run in this step.
+    - name: Make gatekeeper executable (mode=record)
+      if: inputs.mode == 'record'
+      shell: bash
+      env:
+        GATEKEEPER_BIN: ${{ inputs.gatekeeper }}
+      run: chmod +x "$GATEKEEPER_BIN"
+
+    - name: Record evidence (mode=record)
+      if: inputs.mode == 'record'
+      id: record
+      shell: bash
+      env:
+        GATEKEEPER_BIN: ${{ inputs.gatekeeper }}
+        RESULT_FILE: ${{ inputs.result }}
+        EVIDENCE_DIR: ${{ inputs.evidence }}
+        CONFIG: ${{ inputs.config }}
+        REPO: ${{ github.repository }}
+        COMMIT: ${{ github.sha }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        RUN_ID: ${{ github.run_id }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        # GATEKEEPER_SIGNING_KEY is read from the ambient environment set by
+        # the caller's own uses: step (see the header comment above). It is
+        # never printed, including in this error message.
+        if [ -z "${GATEKEEPER_SIGNING_KEY:-}" ]; then
+          echo "::error::GATEKEEPER_SIGNING_KEY is empty or not set (must be provided via env: on this step, in mode: record only)"
+          exit 1
+        fi
+
+        EVIDENCE_BRANCH="$("$GATEKEEPER_BIN" evidence-target --repo "$REPO" --config "$CONFIG" | sed -n 's/^branch=//p')"
+        if [ -z "$EVIDENCE_BRANCH" ]; then
+          echo "::error::could not resolve the evidence branch"
+          exit 1
+        fi
+        export EVIDENCE_BRANCH
+
+        "$ACTION_PATH/scripts/evidence-push.sh"
