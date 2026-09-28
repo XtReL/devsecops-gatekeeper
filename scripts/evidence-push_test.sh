@@ -116,4 +116,15 @@ run_push "$STALE" "$(printf 'd%.0s' $(seq 1 40))" "2002"
 echo "== evidence-push_test: verify =="
 "$TRUSTCORE_BIN" verify -log "$STALE" -origin "github.com/$REPO/gatekeeper-evidence/v1" -log-pub "$PUB" -attester-pub "$PUB"
 
+# "gatekeeper evidence-init" writes .gitattributes ("* -text") next to
+# checkpoint so a clone with Windows' common core.autocrlf=true does not
+# turn the log's LF bytes into CRLF: without it, the checkpoint (a signed
+# note) and each entry (a hashed Merkle leaf) no longer match what was
+# signed, and "trustcore verify" fails with "malformed note". Prove the
+# fix here, not just by inspecting the file's contents.
+echo "== evidence-push_test: clone with core.autocrlf=true still verifies =="
+AUTOCRLF_CLONE="$WORK/autocrlf-clone"
+git clone -q -c core.autocrlf=true --branch gatekeeper-evidence --single-branch "$ORIGIN" "$AUTOCRLF_CLONE"
+"$TRUSTCORE_BIN" verify -log "$AUTOCRLF_CLONE" -origin "github.com/$REPO/gatekeeper-evidence/v1" -log-pub "$PUB" -attester-pub "$PUB"
+
 echo "evidence-push_test: OK"

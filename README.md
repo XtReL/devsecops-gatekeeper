@@ -25,6 +25,10 @@
 [`docs/onboarding.md`](docs/onboarding.md), готовый к копированию шаблон
 workflow — [`examples/client-workflow.yml`](examples/client-workflow.yml).
 
+Посторонний проверяющий может независимо проверить журнал доказательств
+без доступа к секретам владельца — инструкция в
+[`docs/VERIFY.md`](docs/VERIFY.md).
+
 ## Запуск локально
 
 ```bash

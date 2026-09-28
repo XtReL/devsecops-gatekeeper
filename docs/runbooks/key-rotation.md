@@ -138,11 +138,25 @@ GitHub Security Advisory с теми же данными. Проверяющий
    git checkout --orphan gatekeeper-evidence-e<k>
    git rm -rf . 2>/dev/null || true
    cp -r ../evidence-e<k>/. .
+   printf '* -text\n' > .gitattributes
    git add -A
    git commit -m "rotate: epoch <k> genesis"
    git push origin gatekeeper-evidence-e<k>
    cd ..
    ```
+
+   `.gitattributes` — обязательная строка `* -text`, коммитится вместе с
+   `checkpoint` и `entries/.gitkeep`, которые копирует `cp -r`.
+   `trustcore rotate` (в отличие от `gatekeeper evidence-init`) не создаёт
+   `.gitattributes` в каталоге новой эпохи, поэтому его нужно добавить
+   вручную здесь же, до `git add`. Без него клон новой эпохи с Windows'
+   `core.autocrlf=true` (настройка по умолчанию) превращает `LF` в `CRLF`
+   в `checkpoint` (подписанная нота) и в файлах `entries/` (хэшируемые
+   листья Меркла) при checkout, и `trustcore verify` падает с «malformed
+   note» — байты, которые проверяет подпись, больше не совпадают с тем,
+   что было подписано. `* -text` отключает атрибут `text` для всех файлов
+   ветки, поэтому git не трогает переводы строк независимо от
+   `core.autocrlf` клона.
 
 2. Секрет CI — **перезаписывается**, старое значение не остаётся:
 
