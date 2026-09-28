@@ -1,5 +1,8 @@
 # Независимая проверка журнала доказательств
 
+Ориентир по времени: 10–15 минут при установленном Go, из них несколько
+минут уходит на сборку сканера (раздел «Воспроизведение» ниже).
+
 Инструкция для постороннего проверяющего: у вас нет доступа к секретам
 владельца репозитория, только публичные ветки на GitHub. Нужны **Go** (для
 сборки `trustcore` и, при желании воспроизведения, `gatekeeper`) и **git**.
@@ -160,6 +163,7 @@ OK: checkpoint signature, Merkle root and all entry signatures verified
 После каждой проверки:
 
 ```bash
+mkdir -p my-checkpoints
 cp evidence-check/checkpoint my-checkpoints/OWNER-REPO-$(date +%Y%m%d).checkpoint
 ```
 
@@ -183,7 +187,21 @@ previous checkpoint`.
 
 Каждая запись в `entries/00000000000000000000.json` и далее — конверт DSSE:
 поле `payload` — стандартный base64 от JSON-документа in-toto Statement.
-Расшифровка без специального инструмента:
+
+В Git Bash на Windows обычно нет `jq`, а `python3` часто вместо запуска
+открывает Microsoft Store. Первый вариант — без того и другого (проверено
+в Git Bash):
+
+```bash
+grep -o '"payload":"[^"]*"' evidence-check/entries/00000000000000000000.json \
+  | cut -d'"' -f4 | base64 -d; echo
+```
+
+(`echo` в конце — чтобы приглашение шелла не прилипало к концу вывода:
+сам JSON не заканчивается переводом строки.)
+
+Если `jq` есть (Linux, macOS, WSL, либо поставлен отдельно на Windows) —
+тот же результат, сразу с форматированием:
 
 ```bash
 jq -r '.payload' evidence-check/entries/00000000000000000000.json \
@@ -204,6 +222,20 @@ jq -r '.payload' evidence-check/entries/00000000000000000000.json \
 | `predicate.configuration[0].annotations.reproduce` | точная команда повтора | `git checkout … && gatekeeper scan …` |
 | `predicate.configuration[0].annotations.findings` | находки (только `rule`/`file`/`fingerprint`, без значений секретов) | `[]` |
 | `predicate.url` | ссылка на запуск CI, где сделана запись | `https://github.com/…/actions/runs/…` |
+
+У всех записей с `predicate.result` = `PASSED` и пустым `findings` будет
+один и тот же `digest.sha256` (сейчас `b12037b56260…`): `result.json`
+сканирования не содержит ни коммита, ни имени репозитория, поэтому
+«чистый» результат на любом коммите — байт в байт одинаковый файл и,
+соответственно, одинаковый sha256. Это ожидаемое поведение, а не потеря
+защиты: если бы в проверяемом коммите был секрет, собственный скан
+проверяющего (раздел «Воспроизведение» ниже) дал бы другой `result.json`
+и другой sha256 — расхождение с заявленным как раз и обнаружило бы
+подмену.
+
+В поле `reproduce` вместо `&` может стоять экранированная JSON-запись
+`\u0026` — например, `\u0026\u0026` в тексте команды означает обычный
+шелловый `&&`, а не опечатку и не другую команду.
 
 `jq` не обязателен — то же самое можно сделать `python3 -c "import
 json,base64,sys; print(json.dumps(json.loads(base64.b64decode(json.load(open(sys.argv[1]))['payload'])), indent=2))" entries/….json`.
@@ -226,6 +258,15 @@ json,base64,sys; print(json.dumps(json.loads(base64.b64decode(json.load(open(sys
    GOFLAGS=-mod=readonly go build -o ../gatekeeper ./cmd/gatekeeper
    cd ..
    ```
+
+   Сборка скачивает ~50 модулей Go; на обычной сети это занимает
+   несколько минут — это нормально, не зависание, дождитесь завершения.
+
+   В Git Bash бинарник без расширения `.exe` (как в команде выше)
+   запускается без проблем. В PowerShell или cmd так не сработает —
+   соберите с явным расширением (`go build -o ../gatekeeper.exe
+   ./cmd/gatekeeper`) и используйте `..\gatekeeper.exe` вместо
+   `../gatekeeper` в шаге 3 ниже.
 
 2. Отдельно клонируйте **проверяемый** репозиторий (тот, чей коммит
    заявлен в `subject[0].digest.gitCommit`, не devsecops-gatekeeper — если
