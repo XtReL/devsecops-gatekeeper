@@ -95,12 +95,25 @@ func Target(repo string, cfg Config) (branch, origin string) {
 	return fmt.Sprintf("gatekeeper-evidence-e%d", cfg.Epoch), origin
 }
 
+// gitattributesContents disables git's line-ending translation for every
+// file in the evidence log. checkpoint is a signed note and each entry file
+// is hashed as a Merkle leaf: both must reach a clone byte-for-byte. Without
+// this, a clone with Windows' common core.autocrlf=true turns each file's
+// LF into CRLF on checkout, and "trustcore verify" then fails to parse the
+// checkpoint ("malformed note") because the bytes it hashes no longer match
+// what was signed. "* -text" disables the "text" attribute outright, so git
+// treats every file as binary and never rewrites its line endings,
+// regardless of the clone's own core.autocrlf.
+const gitattributesContents = "* -text\n"
+
 // Init creates a new, empty evidence log at dir for repo at the given epoch,
 // signed by the key at keyPath, and adds entries/.gitkeep so git preserves
 // the otherwise-empty entries directory (this is what "gatekeeper
 // evidence-init" runs, once, on the client's machine, for a client starting
 // at an epoch other than 1; a log for epoch k>=2 in an existing rotation
-// chain is created by "trustcore rotate", not this command).
+// chain is created by "trustcore rotate", not this command). It also adds
+// .gitattributes next to checkpoint (see gitattributesContents) so a clone
+// on Windows does not corrupt the log's signed bytes.
 func Init(dir, repo, keyPath string, epoch int) error {
 	if epoch < 1 {
 		return fmt.Errorf("evidence: epoch must be >= 1, got %d", epoch)
@@ -112,6 +125,10 @@ func Init(dir, repo, keyPath string, epoch int) error {
 	origin := event.EpochOrigin(Origin(repo), epoch)
 	if _, err := filelog.Init(dir, origin, signer); err != nil {
 		return fmt.Errorf("evidence: init log: %w", err)
+	}
+	gitattributes := filepath.Join(dir, ".gitattributes")
+	if err := os.WriteFile(gitattributes, []byte(gitattributesContents), 0o600); err != nil {
+		return fmt.Errorf("evidence: write .gitattributes: %w", err)
 	}
 	gitkeep := filepath.Join(dir, "entries", ".gitkeep")
 	if err := os.WriteFile(gitkeep, nil, 0o600); err != nil {

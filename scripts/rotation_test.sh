@@ -116,6 +116,11 @@ push_record "$CFG_E1" "$EVIDENCE_E1" "gatekeeper-evidence" "$REPO" "$WORK/e1.key
 
 [ "$(entry_count "$EVIDENCE_E1")" -eq 2 ] || { echo "FAIL: expected 2 entries in epoch 1" >&2; exit 1; }
 
+echo "== rotation_test: epoch 1 clone with core.autocrlf=true still verifies =="
+AUTOCRLF_E1="$WORK/autocrlf-e1"
+git clone -q -c core.autocrlf=true --branch gatekeeper-evidence --single-branch "$ORIGIN" "$AUTOCRLF_E1"
+"$TRUSTCORE_BIN" verify -log "$AUTOCRLF_E1" -origin "$BASE_ORIGIN" -log-pub "$WORK/e1.pub" -attester-pub "$WORK/e1.pub"
+
 # An external, trusted copy of the epoch-1 checkpoint at this exact size —
 # what an owner or auditor would have kept outside the log — for the
 # unplanned rotation below (ADR 0002: the freeze point of an unplanned
@@ -146,6 +151,12 @@ E2_CLONE="$WORK/e2-clone"
 git clone -q "$ORIGIN" "$E2_CLONE"
 (cd "$E2_CLONE" && git checkout --orphan gatekeeper-evidence-e2 -q && git rm -rf . -q >/dev/null 2>&1 || true)
 cp -r "$NEW_E2_DIR"/. "$E2_CLONE"/
+# "trustcore rotate" (unlike "gatekeeper evidence-init") does not write
+# .gitattributes into the epoch it starts, so publishing a new epoch must
+# add it by hand, same as docs/runbooks/key-rotation.md instructs: without
+# it, a clone with Windows' core.autocrlf=true corrupts checkpoint and the
+# genesis entry (see evidence-push_test.sh's autocrlf-clone check).
+printf '* -text\n' >"$E2_CLONE/.gitattributes"
 git_id "$E2_CLONE" add -A
 git_id "$E2_CLONE" commit -q -m "rotate: epoch 2 genesis"
 git -C "$E2_CLONE" push -q origin gatekeeper-evidence-e2
@@ -173,6 +184,12 @@ cat >"$MANIFEST_PLANNED" <<EOF
 }
 EOF
 "$TRUSTCORE_BIN" verify-chain -manifest "$MANIFEST_PLANNED"
+
+echo "== rotation_test: epoch 2 clone with core.autocrlf=true still verifies =="
+AUTOCRLF_E2="$WORK/autocrlf-e2"
+git clone -q -c core.autocrlf=true --branch gatekeeper-evidence-e2 --single-branch "$ORIGIN" "$AUTOCRLF_E2"
+E2_ORIGIN="github.com/$REPO/gatekeeper-evidence/v1/e2"
+"$TRUSTCORE_BIN" verify -log "$AUTOCRLF_E2" -origin "$E2_ORIGIN" -log-pub "$WORK/e2.pub" -attester-pub "$WORK/e2.pub"
 
 # ---------------------------------------------------------------------------
 # 3. Unplanned rotation to epoch 2, from the same epoch-1 state.

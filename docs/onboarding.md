@@ -54,6 +54,22 @@ gh secret set GATEKEEPER_SIGNING_KEY \
   < gatekeeper-evidence.key
 ```
 
+Если `gh secret set` отвечает `HTTP 404`, значит команда выполнена раньше
+создания environment: сначала завершите первую половину этого шага
+(Settings → Environments → создать `gatekeeper-evidence`), затем повторите
+команду.
+
+На Windows `gh` ставится одной командой (winget идёт с Windows по
+умолчанию, отдельно ставить не нужно):
+
+```powershell
+winget install --id GitHub.cli
+```
+
+После установки `gh` не появляется в текущем сеансе PATH — перезапустите
+терминал целиком (в VS Code — весь редактор, не только вкладку терминала),
+прежде чем выполнять команду выше.
+
 ## 3. Журнал: `trustcore init` и orphan-ветка
 
 Журнал живёт в отдельной ветке `gatekeeper-evidence` без общей истории с
@@ -78,6 +94,7 @@ trustcore init \
   -origin "github.com/OWNER/REPO/gatekeeper-evidence/v1" \
   -log-key ../gatekeeper-evidence.key
 touch entries/.gitkeep
+printf '* -text\n' > .gitattributes
 
 git add -A
 git commit -m "gatekeeper: initialise evidence log (epoch 1)"
@@ -88,6 +105,20 @@ git push origin gatekeeper-evidence
 нужен отдельной командой, чтобы git не терял пустой каталог. `trustcore` не
 читает `GATEKEEPER_SIGNING_KEY` — эта инициализация выполняется на устройстве
 владельца и никогда в CI (`docs/adr/0001-action-evidence.md`).
+
+`.gitattributes` со строкой `* -text` коммитится рядом с `checkpoint` и
+`entries/.gitkeep` **обязательно**: `checkpoint` — подписанная нота, а
+каждый файл в `entries/` — хэшируемый лист Меркла, оба должны дойти до
+клона побайтно теми же, что были подписаны. Без `.gitattributes`
+дефолтная настройка Windows (`core.autocrlf=true`) при клонировании
+превращает `LF` в `CRLF` в обоих, и `trustcore verify` падает с
+«malformed note» — подпись перестаёт сходиться с изменившимися байтами.
+`* -text` отключает атрибут `text` для всех файлов ветки журнала, поэтому
+git считает их бинарными и не трогает переводы строк независимо от
+`core.autocrlf` клона. (Команда `gatekeeper evidence-init`, используемая
+для эпох ≥ 2 или для повторной инициализации этим бинарником, создаёт
+`.gitattributes` автоматически — здесь она недоступна клиенту, поэтому
+файл создаётся вручную, как показано выше.)
 
 ## 4. Ruleset для ветки журнала
 

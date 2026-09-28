@@ -190,6 +190,13 @@ func TestRunEvidenceInitCreatesLogAndGitkeep(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(evidenceDir, "entries", ".gitkeep")); err != nil {
 		t.Fatalf("expected entries/.gitkeep: %v", err)
 	}
+	gitattributes, err := os.ReadFile(filepath.Join(evidenceDir, ".gitattributes"))
+	if err != nil {
+		t.Fatalf("expected .gitattributes: %v", err)
+	}
+	if string(gitattributes) != "* -text\n" {
+		t.Fatalf("expected .gitattributes to contain \"* -text\\n\", got %q", gitattributes)
+	}
 }
 
 func TestRunRecordExitCodes(t *testing.T) {
