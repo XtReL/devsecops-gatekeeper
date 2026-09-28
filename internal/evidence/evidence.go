@@ -5,6 +5,7 @@
 package evidence
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
@@ -35,23 +36,81 @@ const SigningKeyEnv = "GATEKEEPER_SIGNING_KEY"
 // idempotent).
 var ErrAlreadyRecorded = errors.New("evidence: run already recorded")
 
-// Origin is the trust-core log identity for repo's gatekeeper-evidence
-// branch (ADR 0001, decision A): "github.com/OWNER/REPO/gatekeeper-evidence/v1".
+// Origin is the trust-core log identity for repo's epoch-1 evidence log
+// (ADR 0001, decision A): "github.com/OWNER/REPO/gatekeeper-evidence/v1".
+// This is the base origin epoch k>=2 is derived from (event.EpochOrigin);
+// see Target.
 func Origin(repo string) string {
 	return fmt.Sprintf("github.com/%s/gatekeeper-evidence/v1", repo)
 }
 
-// Init creates a new, empty evidence log at dir for repo, signed by the key
-// at keyPath, and adds entries/.gitkeep so git preserves the otherwise-empty
-// entries directory (this is what "gatekeeper evidence-init" runs, once,
-// on the client's machine; the ADR-initialized branch for this repository
-// used the equivalent "trustcore init").
-func Init(dir, repo, keyPath string) error {
+// DefaultConfigPath is where Record and "gatekeeper evidence-target" look
+// for the epoch config when the operator does not point --config elsewhere.
+const DefaultConfigPath = ".gatekeeper/evidence.json"
+
+// Config is the evidence log's epoch config (trust-core ADR 0002: epoch is
+// the only source of truth in the client repository, branch and origin are
+// always derived from it, never stored alongside it).
+type Config struct {
+	Epoch int `json:"epoch"`
+}
+
+// LoadConfig reads the epoch config at path (DefaultConfigPath if path is
+// empty). A missing file means epoch 1, for backward compatibility with
+// repositories that predate ADR 0002 rotation. The file is strict JSON: an
+// unknown field or an epoch below 1 is an error.
+func LoadConfig(path string) (Config, error) {
+	if path == "" {
+		path = DefaultConfigPath
+	}
+	// #nosec G304 -- path is DefaultConfigPath or the operator's own --config flag.
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return Config{Epoch: 1}, nil
+	}
+	if err != nil {
+		return Config{}, fmt.Errorf("evidence: read config %s: %w", path, err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	var cfg Config
+	if err := dec.Decode(&cfg); err != nil {
+		return Config{}, fmt.Errorf("evidence: parse config %s: %w", path, err)
+	}
+	if cfg.Epoch < 1 {
+		return Config{}, fmt.Errorf("evidence: config %s: epoch must be >= 1, got %d", path, cfg.Epoch)
+	}
+	return cfg, nil
+}
+
+// Target derives the evidence branch and trust-core log origin for repo at
+// the epoch in cfg (trust-core ADR 0002): epoch 1 is branch
+// "gatekeeper-evidence" and origin Origin(repo); epoch k>=2 is branch
+// "gatekeeper-evidence-e<k>" and origin event.EpochOrigin(Origin(repo), k).
+func Target(repo string, cfg Config) (branch, origin string) {
+	origin = event.EpochOrigin(Origin(repo), cfg.Epoch)
+	if cfg.Epoch <= 1 {
+		return "gatekeeper-evidence", origin
+	}
+	return fmt.Sprintf("gatekeeper-evidence-e%d", cfg.Epoch), origin
+}
+
+// Init creates a new, empty evidence log at dir for repo at the given epoch,
+// signed by the key at keyPath, and adds entries/.gitkeep so git preserves
+// the otherwise-empty entries directory (this is what "gatekeeper
+// evidence-init" runs, once, on the client's machine, for a client starting
+// at an epoch other than 1; a log for epoch k>=2 in an existing rotation
+// chain is created by "trustcore rotate", not this command).
+func Init(dir, repo, keyPath string, epoch int) error {
+	if epoch < 1 {
+		return fmt.Errorf("evidence: epoch must be >= 1, got %d", epoch)
+	}
 	signer, err := keys.LoadSigner(keyPath)
 	if err != nil {
 		return fmt.Errorf("evidence: load signing key: %w", err)
 	}
-	if _, err := filelog.Init(dir, Origin(repo), signer); err != nil {
+	origin := event.EpochOrigin(Origin(repo), epoch)
+	if _, err := filelog.Init(dir, origin, signer); err != nil {
 		return fmt.Errorf("evidence: init log: %w", err)
 	}
 	gitkeep := filepath.Join(dir, "entries", ".gitkeep")
@@ -64,12 +123,13 @@ func Init(dir, repo, keyPath string) error {
 // Params carries everything a CI run knows about one scan to Record.
 type Params struct {
 	ResultPath string // path to the engine.Result JSON written by "gatekeeper scan"
-	Evidence   string // evidence log directory (a checkout of gatekeeper-evidence)
+	Evidence   string // evidence log directory (a checkout of the target epoch's branch)
 	Repo       string // "OWNER/REPO"
 	Commit     string // full commit SHA the scan ran against
 	RunURL     string // link to the CI run
 	RunID      string // github.run_id
 	RunAttempt string // github.run_attempt
+	ConfigPath string // path to the epoch config; DefaultConfigPath if empty
 }
 
 const reproduceFormat = "git checkout %s && gatekeeper scan --source . --out result.json"
@@ -102,7 +162,13 @@ func Record(p Params) error {
 		return fmt.Errorf("evidence: %w", err)
 	}
 
-	log, err := filelog.Open(p.Evidence, Origin(p.Repo), signer)
+	cfg, err := LoadConfig(p.ConfigPath)
+	if err != nil {
+		return fmt.Errorf("evidence: %w", err)
+	}
+	_, origin := Target(p.Repo, cfg)
+
+	log, err := filelog.Open(p.Evidence, origin, signer)
 	if err != nil {
 		return fmt.Errorf("evidence: open log: %w", err)
 	}

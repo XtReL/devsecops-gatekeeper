@@ -68,4 +68,7 @@ GOFLAGS=-mod=readonly go build -o "$bin_dir/gatekeeper" ./cmd/gatekeeper
 GOFLAGS=-mod=readonly go build -o "$bin_dir/trustcore" github.com/XtReL/trust-core/cmd/trustcore
 scripts/evidence-push_test.sh "$bin_dir/gatekeeper" "$bin_dir/trustcore"
 
+echo "check: scripts/rotation_test.sh"
+scripts/rotation_test.sh "$bin_dir/gatekeeper" "$bin_dir/trustcore"
+
 echo "check: OK"

@@ -71,6 +71,7 @@ run_push() {
   GATEKEEPER_BIN="$GATEKEEPER_BIN_SRC" \
   RESULT_FILE="$RESULT" \
   EVIDENCE_DIR="$evidence_dir" \
+  EVIDENCE_BRANCH="gatekeeper-evidence" \
   REPO="$REPO" \
   COMMIT="$commit" \
   RUN_URL="https://example.invalid/actions/runs/$run_id" \

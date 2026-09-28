@@ -510,3 +510,141 @@ func TestRecordedEntryNeverContainsTestSecretValue(t *testing.T) {
 		t.Fatalf("recorded entry leaks the raw secret value")
 	}
 }
+
+func TestLoadConfigMissingFileDefaultsToEpochOne(t *testing.T) {
+	cfg, err := LoadConfig(filepath.Join(t.TempDir(), "does-not-exist.json"))
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.Epoch != 1 {
+		t.Fatalf("expected epoch 1 for a missing config file, got %d", cfg.Epoch)
+	}
+}
+
+func writeConfig(t *testing.T, contents string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "evidence.json")
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return path
+}
+
+func TestLoadConfigRejectsUnknownField(t *testing.T) {
+	path := writeConfig(t, `{"epoch": 1, "branch": "gatekeeper-evidence"}`)
+	if _, err := LoadConfig(path); err == nil {
+		t.Fatal("expected an error for an unknown field")
+	}
+}
+
+func TestLoadConfigRejectsEpochZero(t *testing.T) {
+	path := writeConfig(t, `{"epoch": 0}`)
+	if _, err := LoadConfig(path); err == nil {
+		t.Fatal("expected an error for epoch 0")
+	}
+}
+
+func TestLoadConfigRejectsGarbage(t *testing.T) {
+	path := writeConfig(t, `not json`)
+	if _, err := LoadConfig(path); err == nil {
+		t.Fatal("expected an error for a garbage config file")
+	}
+}
+
+func TestLoadConfigAcceptsValidEpoch(t *testing.T) {
+	path := writeConfig(t, `{"epoch": 2}`)
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.Epoch != 2 {
+		t.Fatalf("expected epoch 2, got %d", cfg.Epoch)
+	}
+}
+
+func TestTargetEpochs(t *testing.T) {
+	repo := "XtReL/devsecops-gatekeeper"
+	cases := []struct {
+		epoch      int
+		wantBranch string
+		wantOrigin string
+	}{
+		{1, "gatekeeper-evidence", "github.com/XtReL/devsecops-gatekeeper/gatekeeper-evidence/v1"},
+		{2, "gatekeeper-evidence-e2", "github.com/XtReL/devsecops-gatekeeper/gatekeeper-evidence/v1/e2"},
+		{10, "gatekeeper-evidence-e10", "github.com/XtReL/devsecops-gatekeeper/gatekeeper-evidence/v1/e10"},
+	}
+	for _, c := range cases {
+		branch, origin := Target(repo, Config{Epoch: c.epoch})
+		if branch != c.wantBranch || origin != c.wantOrigin {
+			t.Errorf("Target(epoch=%d) = (%q, %q), want (%q, %q)", c.epoch, branch, origin, c.wantBranch, c.wantOrigin)
+		}
+	}
+}
+
+// TestRecordWithEpochTwoConfigWritesToEpochTwoOrigin pins the config as the
+// single source of truth for where "record" writes (docs/tasks/rotation.md):
+// a log initialised at epoch 2's origin, opened through a config pointing
+// at epoch 2, must record successfully; the same log opened through the
+// epoch-1 default must not (wrong origin for filelog.Open).
+func TestRecordWithEpochTwoConfigWritesToEpochTwoOrigin(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	resultPath := writeResult(t, t.TempDir(), nil)
+
+	_, epoch2Origin := Target(repo, Config{Epoch: 2})
+	signer, err := keys.ParseSigner(pemBytes)
+	if err != nil {
+		t.Fatalf("parse signer: %v", err)
+	}
+	logDir := t.TempDir()
+	if _, err := filelog.Init(logDir, epoch2Origin, signer); err != nil {
+		t.Fatalf("init epoch 2 log: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(logDir, "entries", ".gitkeep"), nil, 0o644); err != nil {
+		t.Fatalf("write entries/.gitkeep: %v", err)
+	}
+
+	configPath := writeConfig(t, `{"epoch": 2}`)
+	params := Params{
+		ResultPath: resultPath,
+		Evidence:   logDir,
+		Repo:       repo,
+		Commit:     strings.Repeat("f", 40),
+		RunURL:     "https://github.com/" + repo + "/actions/runs/6",
+		RunID:      "6001",
+		RunAttempt: "1",
+		ConfigPath: configPath,
+	}
+	if err := Record(params); err != nil {
+		t.Fatalf("record with epoch-2 config: %v", err)
+	}
+
+	pub, err := keys.ParsePublic(publicPEM(t, pemBytes))
+	if err != nil {
+		t.Fatalf("derive public key: %v", err)
+	}
+	rep, err := verify.Log(verify.Options{
+		Dir:       logDir,
+		Origin:    epoch2Origin,
+		LogKey:    pub,
+		Attesters: []attest.Verifier{keys.NewVerifier(pub)},
+	})
+	if err != nil {
+		t.Fatalf("verify.Log: %v", err)
+	}
+	if !rep.OK {
+		t.Fatalf("verify.Log reported problems: %v", rep.Problems)
+	}
+	if rep.Size != 1 {
+		t.Fatalf("expected 1 entry, got %d", rep.Size)
+	}
+
+	// The default (no config: epoch 1) origin must not open this epoch-2 log.
+	other := params
+	other.ConfigPath = ""
+	other.RunID = "6002"
+	if err := Record(other); err == nil {
+		t.Fatal("expected an error recording into an epoch-2 log with the epoch-1 default origin")
+	}
+}
