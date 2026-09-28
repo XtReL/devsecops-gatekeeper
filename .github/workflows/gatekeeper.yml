@@ -55,8 +55,10 @@ jobs:
       # result.
       - name: Fail if scan found leaks or errored
         if: steps.scan.outputs.code != '0'
+        env:
+          CODE: ${{ steps.scan.outputs.code }}
         run: |
-          code="${{ steps.scan.outputs.code }}"
+          code="$CODE"
           if [ "$code" = "1" ]; then
             echo "::error::gatekeeper scan found leaked secrets (see the gatekeeper-result artifact)"
           else
@@ -141,10 +143,14 @@ jobs:
 
           # A test token assembled from parts at runtime, never written as a
           # literal secret-looking string (CLAUDE.md), so gitleaks/GitGuardian
-          # never flag this workflow file itself.
+          # never flag this workflow file itself. The body is a SHA-256 hash,
+          # not a repeated pattern: gitleaks' github-pat rule also requires
+          # entropy >= 3, which "a1" x18 (entropy 1.0) fails to clear — a hash
+          # digest clears it (entropy ~3.6, verified against gitleaks v8.30.1).
+          body="$(printf 'gatekeeper-selftest' | sha256sum | cut -c1-36)"
           token="gh"
           token="${token}p_"
-          token="${token}$(printf 'a1%.0s' $(seq 1 18))"
+          token="${token}${body}"
           printf 'token = "%s"\n' "$token" >"$WORK/selftest-dirty/secret.txt"
 
           printf 'nothing to see here\n' >"$WORK/selftest-clean/readme.txt"

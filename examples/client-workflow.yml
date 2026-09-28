@@ -61,8 +61,10 @@ jobs:
 
       - name: Fail if scan found leaks or errored
         if: steps.scan.outputs.code != '0'
+        env:
+          CODE: ${{ steps.scan.outputs.code }}
         run: |
-          code="${{ steps.scan.outputs.code }}"
+          code="$CODE"
           if [ "$code" = "1" ]; then
             echo "::error::gatekeeper scan found leaked secrets (see the gatekeeper-result artifact)"
           else
