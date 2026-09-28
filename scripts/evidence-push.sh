@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
-# evidence-push.sh — optimistic, retried append to the gatekeeper-evidence
-# branch. See docs/adr/0001-action-evidence.md, decision A and amendments
-# 2 and 3: no concurrency group (GitHub cancels a queued run when another
-# lands, which would silently drop the middle push of a fast burst), and no
-# git rebase (the checkpoint file changes on every record, so a rebase would
-# conflict on it every single time). Instead: fetch, hard reset to the
-# remote branch, record again, push — up to 5 attempts with a growing,
-# jittered delay.
+# evidence-push.sh — optimistic, retried append to the evidence branch of
+# the epoch named by EVIDENCE_BRANCH (docs/tasks/rotation.md; trust-core
+# ADR 0002). See docs/adr/0001-action-evidence.md, decision A and
+# amendments 2 and 3: no concurrency group (GitHub cancels a queued run
+# when another lands, which would silently drop the middle push of a fast
+# burst), and no git rebase (the checkpoint file changes on every record,
+# so a rebase would conflict on it every single time). Instead: fetch, hard
+# reset to the remote branch, record again, push — up to 5 attempts with a
+# growing, jittered delay.
 #
 # Required environment:
-#   GATEKEEPER_BIN, RESULT_FILE, EVIDENCE_DIR, REPO, COMMIT, RUN_URL,
-#   RUN_ID, RUN_ATTEMPT, GATEKEEPER_SIGNING_KEY (read by "gatekeeper record"
-#   itself; this script never touches it).
+#   GATEKEEPER_BIN, RESULT_FILE, EVIDENCE_DIR, EVIDENCE_BRANCH, REPO,
+#   COMMIT, RUN_URL, RUN_ID, RUN_ATTEMPT, GATEKEEPER_SIGNING_KEY (read by
+#   "gatekeeper record" itself; this script never touches it).
 set -uo pipefail
 
 : "${GATEKEEPER_BIN:?GATEKEEPER_BIN is required}"
 : "${RESULT_FILE:?RESULT_FILE is required}"
 : "${EVIDENCE_DIR:?EVIDENCE_DIR is required}"
+: "${EVIDENCE_BRANCH:?EVIDENCE_BRANCH is required}"
 : "${REPO:?REPO is required}"
 : "${COMMIT:?COMMIT is required}"
 : "${RUN_URL:?RUN_URL is required}"
@@ -44,9 +46,9 @@ publish_checkpoint_summary() {
 for attempt in $(seq 1 "$max_attempts"); do
   echo "evidence-push: attempt $attempt/$max_attempts"
 
-  if ! git -C "$EVIDENCE_DIR" fetch origin gatekeeper-evidence; then
+  if ! git -C "$EVIDENCE_DIR" fetch origin "$EVIDENCE_BRANCH"; then
     echo "evidence-push: fetch failed" >&2
-  elif ! git -C "$EVIDENCE_DIR" reset --hard origin/gatekeeper-evidence; then
+  elif ! git -C "$EVIDENCE_DIR" reset --hard "origin/$EVIDENCE_BRANCH"; then
     echo "evidence-push: reset failed" >&2
   else
     "$GATEKEEPER_BIN" record \
@@ -70,7 +72,7 @@ for attempt in $(seq 1 "$max_attempts"); do
       exit 1
     elif ! git -C "$EVIDENCE_DIR" add -A || ! git -C "$EVIDENCE_DIR" commit -m "evidence: $COMMIT run $RUN_ID/$RUN_ATTEMPT"; then
       echo "evidence-push: git commit failed" >&2
-    elif git -C "$EVIDENCE_DIR" push origin "HEAD:gatekeeper-evidence"; then
+    elif git -C "$EVIDENCE_DIR" push origin "HEAD:$EVIDENCE_BRANCH"; then
       echo "evidence-push: pushed"
       publish_checkpoint_summary
       exit 0
