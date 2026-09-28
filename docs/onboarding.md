@@ -12,6 +12,12 @@
 
 ## 1. Ключ Ed25519 на устройстве владельца
 
+`trustcore` ставится одной командой (нужен установленный Go):
+
+```bash
+go install github.com/XtReL/trust-core/cmd/trustcore@v0.2.0
+```
+
 ```bash
 trustcore keygen -out gatekeeper-evidence -name "github.com/OWNER/REPO/gatekeeper-evidence/v1"
 ```
@@ -48,11 +54,18 @@ gh secret set GATEKEEPER_SIGNING_KEY \
   < gatekeeper-evidence.key
 ```
 
-## 3. Журнал: `gatekeeper evidence-init` и orphan-ветка
+## 3. Журнал: `trustcore init` и orphan-ветка
 
 Журнал живёт в отдельной ветке `gatekeeper-evidence` без общей истории с
 кодом (ADR 0001, решение A). Инициализация — тоже на устройстве владельца,
-один раз, с тем же ключом:
+один раз, тем же `trustcore` (шаг 1) и тем же ключом — **не** бинарником
+`gatekeeper`: его клиенту взять негде, `go.mod` этого репозитория объявляет
+модуль как `devsecops-gatekeeper`, а не как полный путь
+`github.com/XtReL/devsecops-gatekeeper`, поэтому `go install
+github.com/XtReL/devsecops-gatekeeper/cmd/gatekeeper@...` не резолвится.
+`gatekeeper` собирается только внутри action из исходников по закреплённому
+SHA (`mode: build`, ADR 0003, шаг 6 ниже) — устанавливать его отдельно не
+нужно.
 
 ```bash
 git clone https://github.com/OWNER/REPO.git evidence-init
@@ -60,27 +73,34 @@ cd evidence-init
 git checkout --orphan gatekeeper-evidence
 git rm -rf .
 
-gatekeeper evidence-init \
-  --evidence . \
-  --repo OWNER/REPO \
-  --key ../gatekeeper-evidence.key
+trustcore init \
+  -log . \
+  -origin "github.com/OWNER/REPO/gatekeeper-evidence/v1" \
+  -log-key ../gatekeeper-evidence.key
+touch entries/.gitkeep
 
 git add -A
 git commit -m "gatekeeper: initialise evidence log (epoch 1)"
 git push origin gatekeeper-evidence
 ```
 
-`evidence-init` создаёт `checkpoint`, каталог `entries/` (с `.gitkeep`,
-чтобы git не терял пустой каталог) и не читает `GATEKEEPER_SIGNING_KEY` —
-эта команда никогда не запускается в CI (`docs/adr/0001-action-evidence.md`).
+`trustcore init` создаёт `checkpoint` и каталог `entries/`; `entries/.gitkeep`
+нужен отдельной командой, чтобы git не терял пустой каталог. `trustcore` не
+читает `GATEKEEPER_SIGNING_KEY` — эта инициализация выполняется на устройстве
+владельца и никогда в CI (`docs/adr/0001-action-evidence.md`).
 
 ## 4. Ruleset для ветки журнала
 
 Ветка `gatekeeper-evidence` (и любая `gatekeeper-evidence-e<n>` после
 ротации, `docs/tasks/rotation.md`) не должна допускать удаление и force
 push. В настройках репозитория (Settings → Rules → Rulesets) создайте
-ruleset с целевой веткой `gatekeeper-evidence*` и правилами «Restrict
-deletions» и «Block force pushes».
+ruleset с двумя явными целями — веткой `gatekeeper-evidence` и шаблоном
+`gatekeeper-evidence-e*` (ADR 0002 в trust-core; тот же список целей, что
+`docs/runbooks/key-rotation.md` использует при ротации) — и правилами
+«Restrict deletions» и «Block force pushes». Не задавайте один широкий
+шаблон `gatekeeper-evidence*`: вторую цель нужно вводить так же, как её
+позже добавляет runbook ротации, а не отдельным шаблоном, не описанным
+больше нигде.
 
 **PR для этой ветки не требуется** — если включить обязательный review
 для неё, задание `record` не сможет запушить запись (ADR 0001, решение A).
@@ -104,9 +124,18 @@ evidence-target`), а не хранятся отдельно. Отсутстви
 ## 6. Шаблон workflow
 
 Скопируйте [`examples/client-workflow.yml`](../examples/client-workflow.yml)
-в `.github/workflows/gatekeeper.yml` и замените `<FULL_SHA>` на полный SHA
-нужного релиза (тег — в комментарии рядом, как и во всех остальных actions
-в шаблоне). Два задания:
+в `.github/workflows/gatekeeper.yml` и замените каждый `<FULL_SHA>` на
+полный SHA коммита нужного релизного тега этого репозитория (например,
+`v0.1.0`); сам тег впишите в комментарий `<TAG>` рядом, как и во всех
+остальных actions в шаблоне. Получить SHA тега, не клонируя репозиторий:
+
+```bash
+git ls-remote --tags https://github.com/XtReL/devsecops-gatekeeper.git
+```
+
+нужная строка — `<SHA>\trefs/tags/v0.1.0` (если тег аннотированный, там
+будет ещё и `refs/tags/v0.1.0^{}` — берите SHA из строки с `^{}`: это SHA
+коммита, а не объекта тега). Два задания:
 
 - `scan` — на `pull_request` и `push`, без секретов: собирает `gatekeeper`
   из исходников action по закреплённому SHA, сканирует, выгружает
@@ -142,6 +171,13 @@ trustcore verify \
   -log-pub .gatekeeper/evidence.pub \
   -attester-pub .gatekeeper/evidence.pub
 ```
+
+Это самопроверка владельца: ключ для неё взят из того же репозитория, в
+который пишет запись задание `record`, поэтому она подтверждает лишь
+внутреннюю согласованность журнала и ключа, а не независимость проверки.
+Аудитор проверяет журнал своей копией ключа, полученной от вас напрямую
+(шаг 1, а не `.gatekeeper/evidence.pub` из репозитория) — см. выше про
+ADR 0001, решение B.
 
 Если проверка прошла — журнал подключён. Дальнейшая ротация ключа
 описана в `docs/tasks/rotation.md` и `docs/runbooks/key-rotation.md`.
