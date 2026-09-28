@@ -103,6 +103,29 @@ git clone -c core.autocrlf=false \
 `gatekeeper-evidence-e<k>`, публичный ключ — `.gatekeeper/keys/e<k>.pub` в
 `main` (та же оговорка про «для знакомства», что выше).
 
+## Если вы на Windows
+
+`core.autocrlf=true` — настройка по умолчанию на Windows, поэтому все
+`git clone` в этой инструкции явно несут `-c core.autocrlf=false`: без
+него `LF` в клонированных файлах превращается в `CRLF`, сканер или
+`trustcore` видят другие байты, чем были подписаны, и проверка либо
+падает, либо (хуже) для репозитория с находками молча даёт `result.json`,
+не совпадающий с заверенным `sha256` (см. «Клонирование ветки журнала» и
+раздел «Воспроизведение» выше).
+
+Из этого — два практических следствия:
+
+- Если каталог уже склонирован **без** `-c core.autocrlf=false`, править
+  его на месте (например, `git config core.autocrlf false` внутри уже
+  созданного `.git`) не поможет: файлы рабочей копии уже переписаны в
+  `CRLF` при checkout. Удалите каталог и склонируйте заново с флагом —
+  других надёжных вариантов нет.
+- Ошибка `trustcore verify` вида «malformed note» почти всегда означает
+  именно это: `checkpoint` (или запись) были перезаписаны в `CRLF` при
+  клонировании и байты перестали совпадать с подписанными. Это не
+  повреждение журнала и не признак подделки — это первое, что стоит
+  проверить, прежде чем подозревать целостность записи.
+
 ## Проверка
 
 ```bash
@@ -196,7 +219,8 @@ json,base64,sys; print(json.dumps(json.loads(base64.b64decode(json.load(open(sys
    `git ls-remote --tags https://github.com/XtReL/devsecops-gatekeeper.git`):
 
    ```bash
-   git clone https://github.com/XtReL/devsecops-gatekeeper.git gatekeeper-src
+   git clone -c core.autocrlf=false \
+     https://github.com/XtReL/devsecops-gatekeeper.git gatekeeper-src
    cd gatekeeper-src
    git checkout v0.1.0
    GOFLAGS=-mod=readonly go build -o ../gatekeeper ./cmd/gatekeeper
@@ -206,10 +230,17 @@ json,base64,sys; print(json.dumps(json.loads(base64.b64decode(json.load(open(sys
 2. Отдельно клонируйте **проверяемый** репозиторий (тот, чей коммит
    заявлен в `subject[0].digest.gitCommit`, не devsecops-gatekeeper — если
    вы проверяете чужой журнал, это будет другой репозиторий) и перейдите на
-   этот коммит:
+   этот коммит. Здесь `-c core.autocrlf=false` важен особо: если у
+   проверяемого репозитория на заявленном коммите нет `.gitattributes` с
+   `* -text` (это отдельный репозиторий со своей историей, gatekeeper его
+   не контролирует), Windows с `core.autocrlf=true` по умолчанию превратит
+   `LF` в `CRLF` при клонировании — сканер увидит другие байты, чем CI на
+   Linux, и `result.json` разойдётся с `sha256`, зафиксированным в
+   аттестации, даже если сама проверка записи (раздел «Проверка» выше)
+   прошла успешно:
 
    ```bash
-   git clone https://github.com/OWNER/REPO.git checked-out
+   git clone -c core.autocrlf=false https://github.com/OWNER/REPO.git checked-out
    cd checked-out
    git checkout <gitCommit из шага «Как раскодировать запись»>
    ```
