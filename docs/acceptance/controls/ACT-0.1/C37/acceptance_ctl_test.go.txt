@@ -1,0 +1,17 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"devsecops-gatekeeper/internal/broker"
+)
+
+func TestCtlParseReportPanicsOnMissingField(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "r.json")
+	os.WriteFile(p, []byte(`[{"Description":"x","File":"f"}]`), 0o600)
+	defer func() { t.Logf("recovered panic: %v", recover()) }()
+	parseReport(p, broker.TaskPayload{RepoFullName: "o/r"}, nil, nil)
+	t.Log("no panic")
+}

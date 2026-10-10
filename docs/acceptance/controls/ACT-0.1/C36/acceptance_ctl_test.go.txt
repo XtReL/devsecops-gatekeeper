@@ -1,0 +1,37 @@
+package billing
+
+import (
+	"bytes"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/stripe/stripe-go/v76/webhook"
+)
+
+func signed(secret string) ([]byte, string) {
+	body := []byte(`{"id":"evt_ctl","object":"event","type":"acceptance.unhandled","data":{"object":{}}}`)
+	p := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: body, Secret: secret, Timestamp: time.Now()})
+	return p.Payload, p.Header
+}
+
+func post(t *testing.T, env string, body []byte, hdr string) int {
+	t.Setenv("STRIPE_WEBHOOK_SECRET", env)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/billing/stripe", bytes.NewReader(body))
+	req.Header.Set("Stripe-Signature", hdr)
+	rr := httptest.NewRecorder()
+	NewWebhookHandler(nil, nil).HandleStripeWebhook(rr, req)
+	return rr.Code
+}
+
+func TestCtlEmptySecretAcceptsForgedEvent(t *testing.T) {
+	b, h := signed("")
+	t.Logf("server secret EMPTY, attacker signs with empty key -> HTTP %d", post(t, "", b, h))
+}
+
+func TestCtlConfiguredSecretRejectsForgery(t *testing.T) {
+	b, h := signed("")
+	k := "ctl-" + time.Now().Format("150405.000000")
+	t.Logf("server secret SET, attacker signs with empty key -> HTTP %d", post(t, k, b, h))
+}

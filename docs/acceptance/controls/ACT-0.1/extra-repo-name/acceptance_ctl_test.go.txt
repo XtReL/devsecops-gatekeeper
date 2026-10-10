@@ -1,0 +1,9 @@
+package middleware
+
+import "testing"
+
+func TestCtlRepoFullNameEdgeCases(t *testing.T) {
+	for _, v := range []string{"owner/..", "owner/.", "-owner/repo", "owner/.git"} {
+		t.Logf("ValidateRepoFullName(%q) err=%v", v, ValidateRepoFullName(v))
+	}
+}

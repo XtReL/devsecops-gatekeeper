@@ -1,0 +1,4 @@
+#!/bin/sh
+c=$(cat __WORK__/count 2>/dev/null || echo 0); c=$((c+1)); echo $c > __WORK__/count
+[ "$c" -le ${REJECT_N:-1} ] && { echo "planted rejection #$c" >&2; exit 1; }
+exit 0
