@@ -1,0 +1,41 @@
+НАБЛЮДАЕМЫЕ РЕЗУЛЬТАТЫ (ожидания — в 00-expected-answers.txt, записаны до запусков)
+
+Вопрос 1 (лог 01, 02, 03). Совпало с ожиданием.
+  sha256 K8.patch = 2b7c660a1e5aa8a37f5e860c6aa8cad326e2a65fa60796a95c482b0668dae24b, равен записи
+  RECHECK-1-mutations/K8.patch в SHA256SUMS ветки acceptance/act-v0.
+  Патч применился чисто (patch -p1, без смещений), в копии удалён вызов checkConfigFlag из runRecord.
+  go test -count=1 ./... : exit 1, падает ОДИН тест:
+    --- FAIL: TestRunRecordRejectsEmptyConfigFlag
+        config_test.go:141: record --config "": expected exit 2 and "--config is empty", got exit 0 (stderr: )
+    FAIL devsecops-gatekeeper/cmd/gatekeeper
+  Остальное: internal/engine, internal/evidence, internal/middleware — ok.
+
+Вопрос 2 (лог 04). Совпало с ожиданием. Оба теста падают.
+  TestRecordRejectsMissingNamedConfig — internal/evidence/evidence_test.go:664:
+    "Record succeeded with a missing named config (silent fallback to epoch 1)"
+    Причина: LoadConfig из 7e2f7b6 при отсутствующем файле возвращает эпоху 1 всегда, Record
+    молча записывает в журнал эпохи 1.
+  TestRunRecordAppliesCustomConfig — cmd/gatekeeper/main_test.go:306:
+    "record with a missing --config failed for the wrong reason (stderr: gatekeeper record: evidence: open log:
+     filelog: current checkpoint does not verify under this log key: tlog: note has no valid signature from the expected key)"
+    Код выхода 2 (проверка на строке 302 проходит), но причина — откат на эпоху 1 и несовпадение с журналом
+    эпохи 2, а не отсутствие файла конфигурации. Шаги до строки 302 проходят.
+
+Вопрос 3 (лог 05). Совпало с ожиданием. Оба теста проходят (exit 0).
+  Изменение относительно вопроса 2: падения исчезают целиком. Поведение «явный несуществующий --config —
+  ошибка» обеспечивает evidence.LoadConfig (ba73ba0), а не main.go; main.go из 7e2f7b6 отличается только
+  отсутствием checkConfigFlag, которого эти два теста не касаются.
+
+Вопрос 4 (лог 06). Совпало с ожиданием. Оба теста из f7c2cfe ПРОХОДЯТ на замене из вопроса 2 (exit 0).
+  Тесты подставлены на уровне функций (tools/swap_test_func.py); в логе показано, что тела функций побайтно
+  совпадают с f7c2cfe. Причина: они не различают дефект и исправление — evidence-тест даёт Record пустой
+  каталог (filelog.Open падает при любом поведении LoadConfig), main-тест проверяет только код выхода 2.
+
+Отклонений от ожиданий нет.
+
+ОГРАНИЧЕНИЯ
+ - «Замена версиями из 7e2f7b6» сделана двумя файлами целиком; остальные файлы объекта не менялись.
+   Версии тестов из f7c2cfe подставлены как две функции, а не файлами целиком — так меняется только
+   проверяемая переменная. Подстановку целыми файлами не пробовал; компиляция с функциями прошла без правок.
+ - Все прогоны по одному разу (по запросу), повторов не делалось.
+ - Каждый прогон — в свежей копии git archive; в самом репозитории код объекта не менялся.

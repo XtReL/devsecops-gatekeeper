@@ -1,0 +1,10 @@
+# sha256 K8.patch vs SHA256SUMS
+2b7c660a1e5aa8a37f5e860c6aa8cad326e2a65fa60796a95c482b0668dae24b  K8.patch
+2b7c660a1e5aa8a37f5e860c6aa8cad326e2a65fa60796a95c482b0668dae24b  RECHECK-1-mutations/K8.patch
+SHA MATCH
+# patch --dry-run -p1
+checking file cmd/gatekeeper/main.go
+exit=0
+# patch -p1
+patching file cmd/gatekeeper/main.go
+exit=0

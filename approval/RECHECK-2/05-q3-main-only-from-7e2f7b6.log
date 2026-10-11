@@ -1,0 +1,13 @@
+# Q3: copy of ba73ba0 with ONLY cmd/gatekeeper/main.go from 7e2f7b6 (evidence.go stays ba73ba0)
+b39b4ccbcfb73974dd48c4d01dc9e2cb7fc835f79d7943fe9072a2eadc7b0a2b  internal/evidence/evidence.go
+a92ce4ec77c23bfa19dcb5fc6e96ab1d4b85ea226ff28a86130fc6f0cffa4126  cmd/gatekeeper/main.go
+$ go test -count=1 -v -run '^(TestRecordRejectsMissingNamedConfig|TestRunRecordAppliesCustomConfig)$' ./internal/evidence ./cmd/gatekeeper
+=== RUN   TestRecordRejectsMissingNamedConfig
+--- PASS: TestRecordRejectsMissingNamedConfig (0.00s)
+PASS
+ok  	devsecops-gatekeeper/internal/evidence	0.674s
+=== RUN   TestRunRecordAppliesCustomConfig
+--- PASS: TestRunRecordAppliesCustomConfig (0.06s)
+PASS
+ok  	devsecops-gatekeeper/cmd/gatekeeper	0.705s
+exit=0

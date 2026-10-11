@@ -1,0 +1,13 @@
+--- /tmp/claude-0/-home-user-devsecops-gatekeeper/7d32064e-1a96-5b41-a27d-a5d84e3568b4/scratchpad/src/obj/cmd/gatekeeper/main.go	2026-10-11 17:43:10.000000000 +0000
++++ cmd/gatekeeper/main.go	2026-10-11 19:42:52.783408038 +0000
+@@ -197,10 +197,6 @@
+ 	if err := fs.Parse(args); err != nil {
+ 		return 2
+ 	}
+-	if err := checkConfigFlag(fs, *config); err != nil {
+-		fmt.Fprintf(os.Stderr, "gatekeeper %s: %v\n", fs.Name(), err)
+-		return 2
+-	}
+ 	if *result == "" || *dir == "" || *repo == "" || *commit == "" || *runID == "" || *runAttempt == "" {
+ 		fmt.Fprintln(os.Stderr, "gatekeeper record: --result, --evidence, --repo, --commit, --run-id and --run-attempt are required")
+ 		return 2

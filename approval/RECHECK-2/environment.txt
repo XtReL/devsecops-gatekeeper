@@ -1,0 +1,7 @@
+date_utc_of_prediction_file=2026-10-11T19:42:45Z
+prediction_sha256_at_that_time=57e1da3cded30630b2d239a1ee33ee50d386ce0a086a5d2e2cf27a7382952e9f  (scratchpad/expected.txt, copied byte-for-byte to 00-expected-answers.txt)
+
+object=ba73ba0b78ec91a4ac66bdd9ec9956ea8eee87c0 compare=7e2f7b63fa71b4a9f3cb2a8c471a52119d7273f5 f7c2cfe1f5c4d63c295d2bb8647faa4f276f160a
+copies: git archive <sha> | tar -x into separate directories; all runs in copies, never in the repo tree
+go: go1.25.8 GOFLAGS(used)=-mod=readonly GOPROXY=https://proxy.golang.org,direct GOTOOLCHAIN=auto
+note: go.mod asks for go1.25.8; the toolchain itself was fetched as a Go module (golang.org/toolchain) on the first 'go version'; module downloads for the tests came through GOPROXY according to go.sum

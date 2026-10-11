@@ -1,0 +1,98 @@
+# Q4: Q2 replacement (evidence.go + main.go from 7e2f7b6) + the two tests taken from f7c2cfe (function level swap)
+swapped TestRecordRejectsMissingNamedConfig in /tmp/claude-0/-home-user-devsecops-gatekeeper/7d32064e-1a96-5b41-a27d-a5d84e3568b4/scratchpad/work/q4/internal/evidence/evidence_test.go
+swapped TestRunRecordAppliesCustomConfig in /tmp/claude-0/-home-user-devsecops-gatekeeper/7d32064e-1a96-5b41-a27d-a5d84e3568b4/scratchpad/work/q4/cmd/gatekeeper/main_test.go
+# diff of test files vs ba73ba0:
+--- /tmp/claude-0/-home-user-devsecops-gatekeeper/7d32064e-1a96-5b41-a27d-a5d84e3568b4/scratchpad/src/obj/internal/evidence/evidence_test.go	2026-10-11 17:43:10.000000000 +0000
++++ internal/evidence/evidence_test.go	2026-10-11 19:44:01.724033325 +0000
+@@ -626,53 +626,23 @@
+ 	}
+ }
+ 
+-// ACT-0.1 C23. The log is initialised at epoch 1 and valid, so a Record that
+-// fell back to epoch 1 for the missing config (the old behaviour) would
+-// succeed and append an entry; the test fails on exactly that. The error must
+-// also name the config as the reason, not some later failure.
+ func TestRecordRejectsMissingNamedConfig(t *testing.T) {
+ 	pemBytes := genKeyPEM(t)
+ 	withSigningKey(t, pemBytes)
+ 	repo := "XtReL/devsecops-gatekeeper"
+ 	resultPath := writeResult(t, t.TempDir(), nil)
+-
+-	signer, err := keys.ParseSigner(pemBytes)
+-	if err != nil {
+-		t.Fatalf("parse signer: %v", err)
+-	}
+-	_, epoch1Origin := Target(repo, Config{Epoch: 1})
+-	logDir := t.TempDir()
+-	if _, err := filelog.Init(logDir, epoch1Origin, signer); err != nil {
+-		t.Fatalf("init epoch 1 log: %v", err)
+-	}
+-	if err := os.WriteFile(filepath.Join(logDir, "entries", ".gitkeep"), nil, 0o644); err != nil {
+-		t.Fatalf("write entries/.gitkeep: %v", err)
+-	}
+-
+-	typo := filepath.Join(t.TempDir(), "typo.json")
+-	err = Record(Params{
++	err := Record(Params{
+ 		ResultPath: resultPath,
+-		Evidence:   logDir,
++		Evidence:   t.TempDir(),
+ 		Repo:       repo,
+ 		Commit:     strings.Repeat("f", 40),
+ 		RunURL:     "https://github.com/" + repo + "/actions/runs/7",
+ 		RunID:      "7001",
+ 		RunAttempt: "1",
+-		ConfigPath: typo,
++		ConfigPath: filepath.Join(t.TempDir(), "typo.json"),
+ 	})
+ 	if err == nil {
+-		t.Fatal("Record succeeded with a missing named config (silent fallback to epoch 1)")
+-	}
+-	if !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), "read config "+typo) {
+-		t.Fatalf("Record failed, but not because the named config is missing: %v", err)
+-	}
+-
+-	log, err := filelog.Open(logDir, epoch1Origin, signer)
+-	if err != nil {
+-		t.Fatalf("open log: %v", err)
+-	}
+-	if size, err := log.Size(); err != nil || size != 0 {
+-		t.Fatalf("a rejected Record must not append: size %d, err %v", size, err)
++		t.Fatal("expected Record to fail for a missing explicit config")
+ 	}
+ }
+ 
+--- /tmp/claude-0/-home-user-devsecops-gatekeeper/7d32064e-1a96-5b41-a27d-a5d84e3568b4/scratchpad/src/obj/cmd/gatekeeper/main_test.go	2026-10-11 17:43:10.000000000 +0000
++++ cmd/gatekeeper/main_test.go	2026-10-11 19:44:01.742512609 +0000
+@@ -294,16 +294,8 @@
+ 	if code, stderr := runGatekeeperEnv(t, env, recordArgs("9102", "--config", customConfig)...); code != 0 {
+ 		t.Fatalf("record --config epoch 2: expected exit code 0, got %d (stderr: %s)", code, stderr)
+ 	}
+-	// Without the C23 fix the missing file meant epoch 1 and record failed
+-	// anyway, on this epoch-2 log, with a wrong-origin error. Exit code 2 alone
+-	// cannot tell the two apart: the reason has to be the missing config.
+-	typo := filepath.Join(configDir, "typo.json")
+-	code, stderr := runGatekeeperEnv(t, env, recordArgs("9103", "--config", typo)...)
+-	if code != 2 {
+-		t.Fatalf("record with a missing --config: expected exit code 2, got %d (stderr: %s)", code, stderr)
+-	}
+-	if !strings.Contains(stderr, "read config "+typo) || strings.Contains(stderr, "does not verify") {
+-		t.Fatalf("record with a missing --config failed for the wrong reason (stderr: %s)", stderr)
++	if code, _ := runGatekeeperEnv(t, env, recordArgs("9103", "--config", filepath.Join(configDir, "typo.json"))...); code != 2 {
++		t.Fatalf("record with a missing --config: expected exit code 2, got %d", code)
+ 	}
+ }
+ 
+# diff of the two test functions against f7c2cfe sources (must be empty):
+identical: TestRecordRejectsMissingNamedConfig
+identical: TestRunRecordAppliesCustomConfig
+$ go test -count=1 -v -run '^(TestRecordRejectsMissingNamedConfig|TestRunRecordAppliesCustomConfig)$' ./internal/evidence ./cmd/gatekeeper
+=== RUN   TestRecordRejectsMissingNamedConfig
+--- PASS: TestRecordRejectsMissingNamedConfig (0.00s)
+PASS
+ok  	devsecops-gatekeeper/internal/evidence	0.641s
+=== RUN   TestRunRecordAppliesCustomConfig
+--- PASS: TestRunRecordAppliesCustomConfig (0.14s)
+PASS
+ok  	devsecops-gatekeeper/cmd/gatekeeper	0.771s
+exit=0

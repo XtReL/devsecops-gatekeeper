@@ -1,0 +1,17 @@
+# Q2: copy of ba73ba0 with internal/evidence/evidence.go and cmd/gatekeeper/main.go from 7e2f7b6
+98490ae7276ccf11d43f6f9df942ddd73cc0aab7e35c6c3544a5e694ed8d131b  internal/evidence/evidence.go
+a92ce4ec77c23bfa19dcb5fc6e96ab1d4b85ea226ff28a86130fc6f0cffa4126  cmd/gatekeeper/main.go
+$ go test -count=1 -v -run '^(TestRecordRejectsMissingNamedConfig|TestRunRecordAppliesCustomConfig)$' ./internal/evidence ./cmd/gatekeeper
+=== RUN   TestRecordRejectsMissingNamedConfig
+    evidence_test.go:664: Record succeeded with a missing named config (silent fallback to epoch 1)
+--- FAIL: TestRecordRejectsMissingNamedConfig (0.06s)
+FAIL
+FAIL	devsecops-gatekeeper/internal/evidence	0.730s
+=== RUN   TestRunRecordAppliesCustomConfig
+    main_test.go:306: record with a missing --config failed for the wrong reason (stderr: gatekeeper record: evidence: open log: filelog: current checkpoint does not verify under this log key: tlog: note has no valid signature from the expected key
+        )
+--- FAIL: TestRunRecordAppliesCustomConfig (0.11s)
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	0.786s
+FAIL
+exit=1

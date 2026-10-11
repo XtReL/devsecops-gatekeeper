@@ -1,0 +1,34 @@
+ОЖИДАЕМЫЕ ОТВЕТЫ (записаны до первого запуска тестов; основаны только на чтении кода
+ba73ba0 / 7e2f7b6 / f7c2cfe и текста K8.patch)
+
+Строки указаны для вызова t.Fatal/t.Fatalf, как их печатает go test.
+
+Вопрос 1. K8.patch (sha256 из SHA256SUMS должен совпасть) убирает вызов checkConfigFlag из runRecord.
+  Патч применится чисто, код соберётся (checkConfigFlag остаётся нужен evidence-target).
+  Ожидаю РОВНО ОДИН падающий тест: TestRunRecordRejectsEmptyConfigFlag, cmd/gatekeeper/config_test.go:141,
+  сообщение: record --config "": expected exit 2 and "--config is empty", got exit 0 (stderr: )
+  Причина: --config "" -> LoadConfig("") -> файла по умолчанию нет -> эпоха 1 -> запись добавлена, код 0.
+  Остальные пакеты ./... зелёные; если упадёт что-то ещё, то по причине окружения (БД/сеть), не из-за патча.
+
+Вопрос 2. evidence.go и main.go из 7e2f7b6 в копии объекта (LoadConfig без различия явный/неявный путь:
+  отсутствующий файл = эпоха 1 всегда). Оба теста ПАДАЮТ:
+  - TestRecordRejectsMissingNamedConfig, internal/evidence/evidence_test.go:664:
+    "Record succeeded with a missing named config (silent fallback to epoch 1)"
+    (журнал валидный, эпоха 1, Record молча откатывается на эпоху 1 и добавляет запись).
+  - TestRunRecordAppliesCustomConfig, cmd/gatekeeper/main_test.go:306:
+    "record with a missing --config failed for the wrong reason (stderr: ...)"
+    код выхода = 2 (проверка на строке 302 проходит), но причина — несовпадение origin эпохи 1
+    с журналом эпохи 2 ("does not verify"), а не "read config <typo>".
+  Предыдущие шаги второго теста (строки 291-296) проходят.
+
+Вопрос 3. Заменён только cmd/gatekeeper/main.go (evidence.go остаётся из ba73ba0 со строгим LoadConfig).
+  Оба теста ПРОХОДЯТ. Исправление C23 живёт в evidence.LoadConfig, а не в main.go;
+  main.go из 7e2f7b6 отличается лишь отсутствием checkConfigFlag (пустой --config ""), эти два теста
+  его не проверяют. Изменение относительно вопроса 2: падения пропадают целиком.
+
+Вопрос 4. На замене из вопроса 2 версии двух тестов из f7c2cfe ПРОХОДЯТ оба:
+  - evidence-тест из f7c2cfe даёт Record пустой t.TempDir() вместо журнала: filelog.Open падает на
+    пустом каталоге при любом поведении LoadConfig, а тест проверяет только err != nil;
+  - main-тест из f7c2cfe проверяет только код выхода 2: при откате на эпоху 1 запись в журнал эпохи 2
+    тоже кончается кодом 2 (причину он не проверяет).
+  То есть слабые версии тестов не отличают дефект от исправления.

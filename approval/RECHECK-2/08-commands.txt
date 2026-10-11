@@ -1,0 +1,11 @@
+Выполненные команды (S = каталог scratchpad; рабочие копии S/work/q1..q4 — свежий cp -a из S/src/obj)
+git fetch origin acceptance/act-v0 fix/act-0.1
+git archive <sha> | tar -x -C S/src/{obj=ba73ba0,c7e=7e2f7b6,cf7=f7c2cfe}
+git show origin/acceptance/act-v0:docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/K8.patch > K8.patch
+git show origin/acceptance/act-v0:docs/acceptance/controls/ACT-0.1/SHA256SUMS > SHA256SUMS
+export GOFLAGS=-mod=readonly
+Q1: (в q1) patch -p1 --dry-run < K8.patch ; patch -p1 < K8.patch ; go test -count=1 ./...
+Q2: (q2) cp c7e/internal/evidence/evidence.go, c7e/cmd/gatekeeper/main.go поверх копии ;
+    go test -count=1 -v -run '^(TestRecordRejectsMissingNamedConfig|TestRunRecordAppliesCustomConfig)$' ./internal/evidence ./cmd/gatekeeper
+Q3: (q3) cp c7e/cmd/gatekeeper/main.go поверх копии ; тот же go test
+Q4: (q4 = копия q2) python3 -I tools/swap_test_func.py <evidence_test.go|main_test.go> <cf7 тот же файл> <имя теста> ; тот же go test

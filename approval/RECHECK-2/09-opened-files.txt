@@ -1,0 +1,38 @@
+СПИСОК ОТКРЫТЫХ ФАЙЛОВ (всё, что читалось содержимым: Read / git show / cat / sed / diff / grep с выводом строк)
+
+A. Рабочая копия репозитория (на момент чтения ветка fix/act-0.1 стояла на f7c2cfe, а не на ba73ba0 — локальная ссылка была устарела):
+  1. docs/adr/0001-action-evidence.md          (Read, целиком)
+  2. docs/adr/0003-distribution.md             (Read, целиком)
+  3. docs/tasks/distribution.md                (Read, целиком)
+  4. docs/tasks/rotation.md                    (Read, целиком)
+  5. docs/tasks/stage3.md                      (Read, целиком)
+  6. scripts/check.sh                          (cat -n, целиком; ветка approval/recheck-2 = ba73ba0)
+  CLAUDE.md — текст пришёл в контекст сессии автоматически; сам файл командой не открывался.
+
+B. Ветка origin/acceptance/act-v0 (git show, только эти два файла):
+  7. docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/K8.patch
+  8. docs/acceptance/controls/ACT-0.1/SHA256SUMS            (выведены только строки с K8 и wc -l; затем файл использован для сверки)
+  Файлы docs/acceptance/*.md не открывались ни в одной ветке. Для всех остальных файлов ветки
+  выполнялся только листинг имён (git ls-tree -r --name-only ... | grep -v '\.md$') и git log --oneline -3:
+  имена .md-файлов отфильтрованы, содержимое не читалось. Прежние логи RECHECK-2/RECHECK-1 из этой ветки
+  (в листинге были видны только их имена) не открывались намеренно — ради независимости результата.
+
+C. Временные копии git archive (S/src/obj = ba73ba0, S/src/c7e = 7e2f7b6, S/src/cf7 = f7c2cfe):
+  9.  obj/cmd/gatekeeper/main.go               (строки 150-229 и diff с c7e)
+  10. c7e/cmd/gatekeeper/main.go               (только в виде diff с obj; плюс grep по config)
+  11. obj/internal/evidence/evidence.go        (строки 55-100, grep по ConfigPath/LoadConfig, diff с c7e)
+  12. c7e/internal/evidence/evidence.go        (только в виде diff с obj; плюс grep)
+  13. obj/cmd/gatekeeper/main_test.go          (строки 225-330, diff с cf7)
+  14. obj/internal/evidence/evidence_test.go   (строки 600-700, diff с cf7)
+  15. cf7/cmd/gatekeeper/main_test.go          (только в виде diff с obj)
+  16. cf7/internal/evidence/evidence_test.go   (только в виде diff с obj)
+  17. obj/cmd/gatekeeper/config_test.go        (строки 90-340; grep по именам тестов)
+  18. obj/action.yml                           (только grep-строки со словом config)
+  Поисковые обращения без чтения содержимого: grep -rn по obj (*.go, *.sh, *.yml) по checkConfigFlag;
+  grep -rln 'config' obj --include=*_test.go (только имена файлов); grep -rIl 'acceptance' obj
+  (только имена: README.md, LICENSE — содержимое не выводилось).
+
+D. Файлы, прочитанные самими тестами и инструментами при прогонах (go test, check.sh), мной не перечисляются
+   и не просматривались; известно, что config_test.go читает action.yml копии.
+
+E. Артефакты, созданные мной (не «открытые»): содержимое approval/RECHECK-2/ (см. MANIFEST.sha256).
