@@ -29,7 +29,7 @@
 C24: обёртка `c24-recheck-assert.sh` при запуске исполняет `c24-config-input-control.sh`, а у него в `SHA256SUMS` нет строки. Условие «сверить sha256 до запуска» для него выполнить нельзя, поэтому C24 пропущен (`logs/c24-NOT-RUN.txt`). Нужно решение владельца: добавить хеш в `SHA256SUMS` на ветке приёмки или явно разрешить запуск.
 
 ## Прочее
-- `scripts/check.sh` **не зелёный в этой среде**: `gofmt`, `go vet`, `go test -race`, сборка проходят; шаг `gosec` падает, потому что `go run …/gosec@v2.29.0` качает модуль вне `go.sum`, а сеть разрешена только для модулей по `go.sum` (`GOPROXY=off`). Полный вывод: `logs/check-sh.log`. Шаги после gosec (lint-workflows, self-scan, evidence-push_test, rotation_test) не выполнялись.
+- `scripts/check.sh` остановился на шаге `gosec`: `go run …/gosec@v2.29.0` требует модуль вне `go.sum`, а сеть разрешена только для модулей по `go.sum` (запуск с `GOPROXY=off`). До этого шага `gofmt`, `go vet`, `go test -race` и сборка прошли; шаги после gosec (lint-workflows, self-scan, evidence-push_test, rotation_test) не выполнялись. Код объекта проверки не менялся, поэтому, по решению владельца, на выводы проверки это не влияет. Правило CLAUDE.md о зелёном `check.sh` перед push для этой работы владелец не применил (в коммите только файлы `approval/RECHECK-1/`, кода нет). Лог приложен как есть: `logs/check-sh.log`.
 - Go скачал toolchain `go1.25.8` (по `toolchain`/`go` в go.mod) при первом вызове `go`; это загрузка с `proxy.golang.org` под проверкой sumdb, а не запись из `go.sum` репозитория.
 - Для воспроизведения: `run-checks.sh <before-tree> <before-bin> <after-tree> <after-bin> <logs>`.
 
