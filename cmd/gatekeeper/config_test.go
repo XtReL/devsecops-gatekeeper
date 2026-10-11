@@ -17,8 +17,15 @@ import (
 // the exit code.
 func runIn(t *testing.T, dir string, args ...string) (stdout, stderr string, code int) {
 	t.Helper()
+	return runInEnv(t, dir, nil, args...)
+}
+
+// runInEnv is runIn with extra environment variables.
+func runInEnv(t *testing.T, dir string, env []string, args ...string) (stdout, stderr string, code int) {
+	t.Helper()
 	cmd := exec.Command(gatekeeperBin, args...)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), env...)
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
@@ -70,6 +77,71 @@ func TestEvidenceTargetConfigFlagSemantics(t *testing.T) {
 				t.Fatalf("want exit 2, got %d (stderr: %s)", code, stderr)
 			}
 		})
+	}
+}
+
+// ACT-0.1-RECHECK-1 K8: "record --config ”" must be rejected. The log is a
+// valid epoch-1 log and the working directory has no .gatekeeper/evidence.json,
+// so without the check the empty value falls through to the default path,
+// means epoch 1 and the record succeeds: the first call (flag omitted) proves
+// that setup works, the second must fail only because of the empty value.
+func TestRunRecordRejectsEmptyConfigFlag(t *testing.T) {
+	pemBytes, keyPath := genPEMKey(t, t.TempDir(), "log.key")
+	evidenceDir := filepath.Join(t.TempDir(), "evidence")
+	repo := "o/r"
+	if code, stderr := runGatekeeper(t, "evidence-init", "--evidence", evidenceDir, "--repo", repo, "--key", keyPath); code != 0 {
+		t.Fatalf("evidence-init: exit %d (stderr: %s)", code, stderr)
+	}
+	scanSource := t.TempDir()
+	if err := os.WriteFile(filepath.Join(scanSource, "readme.txt"), []byte("nothing to see here\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := filepath.Join(t.TempDir(), "result.json")
+	if code, stderr := runGatekeeper(t, "scan", "--source", scanSource, "--out", result); code != 0 {
+		t.Fatalf("scan: exit %d (stderr: %s)", code, stderr)
+	}
+
+	cwd := t.TempDir() // no .gatekeeper/evidence.json here
+	env := []string{"GATEKEEPER_SIGNING_KEY=" + string(pemBytes)}
+	record := func(runID string, extra ...string) (string, int) {
+		_, stderr, code := runInEnv(t, cwd, env, append([]string{
+			"record",
+			"--result", result,
+			"--evidence", evidenceDir,
+			"--repo", repo,
+			"--commit", strings.Repeat("f", 40),
+			"--run-url", "https://example.invalid/runs/" + runID,
+			"--run-id", runID,
+			"--run-attempt", "1",
+		}, extra...)...)
+		return stderr, code
+	}
+	entries := func() int {
+		files, err := os.ReadDir(filepath.Join(evidenceDir, "entries"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for _, f := range files {
+			if f.Name() != ".gitkeep" {
+				n++
+			}
+		}
+		return n
+	}
+
+	if stderr, code := record("1"); code != 0 {
+		t.Fatalf("control: record without --config on an epoch-1 log: exit %d (stderr: %s)", code, stderr)
+	}
+	if got := entries(); got != 1 {
+		t.Fatalf("control: expected 1 entry, got %d", got)
+	}
+	stderr, code := record("2", "--config", "")
+	if code != 2 || !strings.Contains(stderr, "--config is empty") {
+		t.Fatalf("record --config \"\": expected exit 2 and \"--config is empty\", got exit %d (stderr: %s)", code, stderr)
+	}
+	if got := entries(); got != 1 {
+		t.Fatalf("a rejected record must not append: expected 1 entry, got %d", got)
 	}
 }
 
