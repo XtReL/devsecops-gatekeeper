@@ -31,7 +31,7 @@ C24: обёртка `c24-recheck-assert.sh` при запуске исполня
 ## Прочее
 - `scripts/check.sh` остановился на шаге `gosec`: `go run …/gosec@v2.29.0` требует модуль вне `go.sum`, а сеть разрешена только для модулей по `go.sum` (запуск с `GOPROXY=off`). До этого шага `gofmt`, `go vet`, `go test -race` и сборка прошли; шаги после gosec (lint-workflows, self-scan, evidence-push_test, rotation_test) не выполнялись. Код объекта проверки не менялся, поэтому, по решению владельца, на выводы проверки это не влияет. Правило CLAUDE.md о зелёном `check.sh` перед push для этой работы владелец не применил (в коммите только файлы `approval/RECHECK-1/`, кода нет). Лог приложен как есть: `runs/check-sh.log`.
 - Go скачал toolchain `go1.25.8` (по `toolchain`/`go` в go.mod) при первом вызове `go`; это загрузка с `proxy.golang.org` под проверкой sumdb, а не запись из `go.sum` репозитория.
-- Для воспроизведения: `run-checks.sh <before-tree> <before-bin> <after-tree> <after-bin> <logs>`.
+- Для воспроизведения: `run-checks.sh <before-tree> <before-bin> <after-tree> <after-bin> <runs-dir>`.
 
 ## Состав папки
 - `checks/` — lib.sh и q1…q5; `run-checks.sh`
