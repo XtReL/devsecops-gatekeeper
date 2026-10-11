@@ -1,0 +1,45 @@
+Список файлов, к которым я обращался в этой проверке (RECHECK-1).
+
+A. Прочитано содержимое (cat / sed / show / diff)
+  CLAUDE.md                                     (получен как контекст сессии, отдельно не открывался)
+  docs/adr/0001-action-evidence.md
+  docs/adr/0003-distribution.md
+  docs/tasks/distribution.md
+  docs/tasks/rotation.md                        (сначала только wc -l, затем прочитан целиком)
+  docs/tasks/stage3.md                          (сначала только wc -l, затем прочитан целиком)
+  action.yml                                    (f7c2cfe целиком; 7e2f7b6 — строки 150-200 и diff)
+  cmd/gatekeeper/main.go                        (фрагменты 95-137, 185-260 и diff 7e2f7b6..f7c2cfe)
+  internal/evidence/evidence.go                 (фрагменты Record/Target и diff)
+  scripts/evidence-push.sh                      (7e2f7b6 — строки 55-80; diff 7e2f7b6..f7c2cfe)
+  scripts/evidence-push_test.sh                 (f7c2cfe, строки 1-80)
+  scripts/check.sh                              (целиком)
+  go.mod                                        (только diff)
+  docs/acceptance/controls/ACT-0.1/SHA256SUMS   (origin/acceptance/act-v0, целиком)
+  docs/acceptance/controls/ACT-0.1/C23/c23-config-strict-repro.sh   (origin/acceptance/act-v0, целиком; запущен)
+  docs/acceptance/controls/ACT-0.1/C24/c24-recheck-assert.sh        (origin/acceptance/act-v0, целиком; НЕ запущен)
+
+B. Хеш вычислен, содержимое не просматривалось, не запускался
+  docs/acceptance/controls/ACT-0.1/C24/c24-config-input-control.sh  (origin/acceptance/act-v0)
+
+C. Выполнялись (исходники своего кода — мои проверки)
+  approval/RECHECK-1/checks/*.sh, approval/RECHECK-1/run-checks.sh
+  scripts/evidence-push.sh обоих коммитов (через шаг record из action.yml)
+  gatekeeper обоих коммитов (собраны go build из git worktree)
+  scripts/check.sh
+
+D. Только имена (git ls-tree / ls / git diff --stat), содержимое не открывалось
+  Каталоги docs/, docs/adr, docs/tasks, scripts, cmd, internal.
+  git diff --stat 7e2f7b6..f7c2cfe: README.md, docs/onboarding.md, cmd/gatekeeper/config_test.go,
+  cmd/gatekeeper/main_test.go, internal/evidence/evidence_test.go, scripts/evidence-push_test.sh (diff не выводился).
+  Список файлов ветки origin/acceptance/act-v0 получен с фильтром grep -v '\.md$' и только по
+  пути «ACT-0.1»: имена *.md в нём не выводились. Из показанных имён не открывались:
+  C13/*, C24/custom.json, C24/record-step.sh, C26/validate-mode.sh, C36/*, C37/*, extra-repo-name/*,
+  run-recheck-1.sh, RECHECK-1-mutations/* (K1..K9, run-mutations.sh — только их строки в SHA256SUMS),
+  docs/acceptance/ACT-0.1-RECHECK-1.sha256.
+
+E. Побочное
+  git fetch origin acceptance/act-v0 загрузил объекты всей ветки (в т.ч. docs/acceptance/*.md),
+  но ни один docs/acceptance/*.md я не открывал, не выводил и не искал по содержимому.
+  go build читал исходники пакетов, от которых зависит cmd/gatekeeper, и модули из кэша Go.
+  go test/vet/check.sh — то же для всего модуля.
+  Файлы в scratchpad сессии: opened.txt (мой журнал), acc/* (копии трёх файлов приёмки), SHA256SUMS.orig.
