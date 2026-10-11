@@ -46,7 +46,8 @@ func Origin(repo string) string {
 }
 
 // DefaultConfigPath is where Record and "gatekeeper evidence-target" look
-// for the epoch config when the operator does not point --config elsewhere.
+// for the epoch config when --config is not passed at all. Passing it
+// explicitly is different: then the file must exist (see LoadConfig).
 const DefaultConfigPath = ".gatekeeper/evidence.json"
 
 // Config is the evidence log's epoch config (trust-core ADR 0002: epoch is
@@ -56,20 +57,22 @@ type Config struct {
 	Epoch int `json:"epoch"`
 }
 
-// LoadConfig reads the epoch config at path (DefaultConfigPath if path is
-// empty). A missing file means epoch 1 only at DefaultConfigPath, for
-// backward compatibility with repositories that predate ADR 0002 rotation;
-// a missing file at any other path is an error, so a typo in an explicit
-// --config (or the action's config input) cannot silently select epoch 1.
-// The file is strict JSON: exactly one object, no trailing data, no unknown
-// field, and an epoch of at least 1.
+// LoadConfig reads the epoch config. An empty path means the caller named no
+// config: it looks at DefaultConfigPath, and if that file is absent the
+// result is epoch 1, for backward compatibility with repositories that
+// predate ADR 0002 rotation. A non-empty path is one the operator named
+// (--config, the action's config input): the file must exist, whatever the
+// path is, DefaultConfigPath included, so a typo cannot silently select
+// epoch 1. The file is strict JSON: exactly one object, no trailing data, no
+// unknown field, and an epoch of at least 1.
 func LoadConfig(path string) (Config, error) {
-	if path == "" {
+	implicit := path == ""
+	if implicit {
 		path = DefaultConfigPath
 	}
 	// #nosec G304 -- path is DefaultConfigPath or the operator's own --config flag.
 	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) && filepath.Clean(path) == DefaultConfigPath {
+	if implicit && errors.Is(err, os.ErrNotExist) {
 		return Config{Epoch: 1}, nil
 	}
 	if err != nil {

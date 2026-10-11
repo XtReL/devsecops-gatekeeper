@@ -511,24 +511,39 @@ func TestRecordedEntryNeverContainsTestSecretValue(t *testing.T) {
 	}
 }
 
-// A missing file means epoch 1 only at DefaultConfigPath (repositories that
-// predate ADR 0002 have no config).
-func TestLoadConfigMissingDefaultFileDefaultsToEpochOne(t *testing.T) {
+// ACT-0.1 C23. Epoch 1 for a missing file only when no config path was named
+// at all (empty path) and .gatekeeper/evidence.json does not exist
+// (repositories that predate ADR 0002 have no config).
+func TestLoadConfigNoPathNoFileDefaultsToEpochOne(t *testing.T) {
 	t.Chdir(t.TempDir())
-	for _, path := range []string{"", DefaultConfigPath} {
-		cfg, err := LoadConfig(path)
-		if err != nil {
-			t.Fatalf("LoadConfig(%q): %v", path, err)
-		}
-		if cfg.Epoch != 1 {
-			t.Fatalf("LoadConfig(%q): expected epoch 1 for a missing default config, got %d", path, cfg.Epoch)
-		}
+	cfg, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("LoadConfig(\"\"): %v", err)
+	}
+	if cfg.Epoch != 1 {
+		t.Fatalf("expected epoch 1 for no path and no default file, got %d", cfg.Epoch)
 	}
 }
 
-// ACT-0.1 C23: a typo in an explicit config path must not silently select
-// epoch 1.
-func TestLoadConfigMissingExplicitFileIsAnError(t *testing.T) {
+func TestLoadConfigNoPathUsesDefaultFile(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.MkdirAll(filepath.Dir(DefaultConfigPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(DefaultConfigPath, []byte(`{"epoch": 3}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("LoadConfig(\"\"): %v", err)
+	}
+	if cfg.Epoch != 3 {
+		t.Fatalf("expected epoch 3 from the default file, got %d", cfg.Epoch)
+	}
+}
+
+// A named path must exist: a typo must not silently select epoch 1.
+func TestLoadConfigNamedPathMissingIsAnError(t *testing.T) {
 	t.Chdir(t.TempDir())
 	paths := []string{
 		filepath.Join(t.TempDir(), "does-not-exist.json"),
@@ -537,7 +552,17 @@ func TestLoadConfigMissingExplicitFileIsAnError(t *testing.T) {
 	}
 	for _, path := range paths {
 		if cfg, err := LoadConfig(path); err == nil {
-			t.Fatalf("LoadConfig(%q): expected an error for a missing explicit config, got epoch %d", path, cfg.Epoch)
+			t.Fatalf("LoadConfig(%q): expected an error for a missing named config, got epoch %d", path, cfg.Epoch)
+		}
+	}
+}
+
+// Naming the default path explicitly is naming it: no fallback to epoch 1.
+func TestLoadConfigExplicitDefaultPathMissingIsAnError(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, path := range []string{DefaultConfigPath, "./" + DefaultConfigPath} {
+		if cfg, err := LoadConfig(path); err == nil {
+			t.Fatalf("LoadConfig(%q): expected an error, got epoch %d", path, cfg.Epoch)
 		}
 	}
 }
@@ -601,7 +626,7 @@ func TestLoadConfigAcceptsTrailingWhitespace(t *testing.T) {
 	}
 }
 
-func TestRecordRejectsMissingExplicitConfig(t *testing.T) {
+func TestRecordRejectsMissingNamedConfig(t *testing.T) {
 	pemBytes := genKeyPEM(t)
 	withSigningKey(t, pemBytes)
 	repo := "XtReL/devsecops-gatekeeper"

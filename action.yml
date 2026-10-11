@@ -37,9 +37,13 @@ inputs:
     required: false
     default: 'evidence'
   config:
-    description: 'Path to the epoch config (mode: target, record)'
+    description: >-
+      Path to the epoch config (mode: target, record). Leave empty to use
+      .gatekeeper/evidence.json if it exists (no file means epoch 1). If set,
+      the file must exist (an error, never epoch 1), even when the path is
+      .gatekeeper/evidence.json.
     required: false
-    default: '.gatekeeper/evidence.json'
+    default: ''
 
 outputs:
   gatekeeper:
@@ -136,7 +140,13 @@ runs:
         REPO: ${{ github.repository }}
         CONFIG: ${{ inputs.config }}
       run: |
-        "$GATEKEEPER_BIN" evidence-target --repo "$REPO" --config "$CONFIG" >> "$GITHUB_OUTPUT"
+        # --config only when the input is set: an explicit config must exist,
+        # an omitted one falls back to .gatekeeper/evidence.json / epoch 1.
+        config_args=()
+        if [ -n "$CONFIG" ]; then
+          config_args=(--config "$CONFIG")
+        fi
+        "$GATEKEEPER_BIN" evidence-target --repo "$REPO" ${config_args[@]+"${config_args[@]}"} >> "$GITHUB_OUTPUT"
 
     # ---- mode: record (the only mode that ever sees the signing key) --
     # No actions/setup-go, no module download, no build here (ADR 0003):
@@ -172,16 +182,25 @@ runs:
           exit 1
         fi
 
-        EVIDENCE_BRANCH="$("$GATEKEEPER_BIN" evidence-target --repo "$REPO" --config "$CONFIG" | sed -n 's/^branch=//p')"
+        config_args=()
+        if [ -n "$CONFIG" ]; then
+          config_args=(--config "$CONFIG")
+        fi
+
+        EVIDENCE_BRANCH="$("$GATEKEEPER_BIN" evidence-target --repo "$REPO" ${config_args[@]+"${config_args[@]}"} | sed -n 's/^branch=//p')"
         if [ -z "$EVIDENCE_BRANCH" ]; then
           echo "::error::could not resolve the evidence branch"
           exit 1
         fi
         export EVIDENCE_BRANCH
 
-        # Same config file for record as for the branch above: record
-        # derives the log origin from it (ADR 0002), so both must agree.
-        EVIDENCE_CONFIG="$CONFIG"
-        export EVIDENCE_CONFIG
+        # Same config for record as for the branch above: record derives the
+        # log origin from it (ADR 0002), so both must agree. Set only when the
+        # input is set, so evidence-push.sh passes --config only then.
+        if [ -n "$CONFIG" ]; then
+          export EVIDENCE_CONFIG="$CONFIG"
+        else
+          unset EVIDENCE_CONFIG
+        fi
 
         "$ACTION_PATH/scripts/evidence-push.sh"

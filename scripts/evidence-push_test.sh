@@ -181,12 +181,8 @@ run_push_e2 "cfg/custom.json"
 [ "$(entry_count "$E2_EVIDENCE")" -eq 1 ] || { echo "FAIL: expected 1 epoch-2 entry with EVIDENCE_CONFIG" >&2; exit 1; }
 "$TRUSTCORE_BIN" verify -log "$E2_EVIDENCE" -origin "github.com/$REPO/gatekeeper-evidence/v1/e2" -log-pub "$PUB" -attester-pub "$PUB"
 
-# The script is only half of the wiring: the action's record step must hand
-# its config input to the script as EVIDENCE_CONFIG.
-ACTION_YML="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/action.yml"
-grep -Eq '^[[:space:]]*EVIDENCE_CONFIG="\$CONFIG"$' "$ACTION_YML" \
-  || { echo "FAIL: action.yml record step does not set EVIDENCE_CONFIG from the config input" >&2; exit 1; }
-grep -Eq '^[[:space:]]*export EVIDENCE_CONFIG$' "$ACTION_YML" \
-  || { echo "FAIL: action.yml record step does not export EVIDENCE_CONFIG" >&2; exit 1; }
+# The other half, the action's record step handing its config input to this
+# script as EVIDENCE_CONFIG (only when the input is set), is exercised by
+# cmd/gatekeeper/config_test.go against the real action.yml.
 
 echo "evidence-push_test: OK"
