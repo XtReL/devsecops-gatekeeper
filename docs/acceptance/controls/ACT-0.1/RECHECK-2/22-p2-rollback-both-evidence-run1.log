@@ -1,0 +1,13 @@
+# date-utc: 2026-10-11T18:01:40Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/rb-both
+# cmd: GOFLAGS=-mod=readonly go test -count=1 -v -run "^TestRecordRejectsMissingNamedConfig$" ./internal/evidence
+# ----
+=== RUN   TestRecordRejectsMissingNamedConfig
+    evidence_test.go:664: Record succeeded with a missing named config (silent fallback to epoch 1)
+--- FAIL: TestRecordRejectsMissingNamedConfig (0.01s)
+FAIL
+FAIL	devsecops-gatekeeper/internal/evidence	0.614s
+FAIL
+# ----
+# exit: 1
+# end-utc: 2026-10-11T18:01:41Z

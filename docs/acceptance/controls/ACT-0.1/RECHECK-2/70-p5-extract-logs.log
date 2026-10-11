@@ -1,0 +1,12 @@
+# date-utc: 2026-10-11T18:09:50Z
+# cwd: /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2
+# cmd: python3 -I p5-extract-mcp-logs.py /root/.claude/projects/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7.jsonl 38162383246 /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/p5-run-38162383246/run-38162383246-jobs.json /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/p5-run-38162383246
+# ----
+ok   job 114537824892 'build': lines 398, original_length 398 -> /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/p5-run-38162383246/run-38162383246-job-114537824892-build.log
+ok   job 114537970741 'target, config on a missing path': lines 280, original_length 280 -> /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/p5-run-38162383246/run-38162383246-job-114537970741-target-config-on-a-missing-path.log
+ok   job 114537970746 'target, config empty string': lines 267, original_length 267 -> /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/p5-run-38162383246/run-38162383246-job-114537970746-target-config-empty-string.log
+ok   job 114537970753 'target, config on committed epoch-2 file': lines 268, original_length 268 -> /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/p5-run-38162383246/run-38162383246-job-114537970753-target-config-on-committed-epoch-2-file.log
+ok   job 114537970806 'target, config not set': lines 267, original_length 267 -> /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/p5-run-38162383246/run-38162383246-job-114537970806-target-config-not-set.log
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:09:50Z

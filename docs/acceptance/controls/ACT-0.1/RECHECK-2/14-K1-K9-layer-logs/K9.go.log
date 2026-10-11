@@ -1,0 +1,7 @@
+--- FAIL: TestEvidenceTargetConfigFlagSemantics (0.04s)
+    --- FAIL: TestEvidenceTargetConfigFlagSemantics/empty_value_passed_explicitly_(flag_given,_"") (0.01s)
+        config_test.go:77: want exit 2, got 0 (stderr: )
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.316s
+ok  	devsecops-gatekeeper/internal/evidence	0.972s
+FAIL

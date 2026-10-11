@@ -1,0 +1,13 @@
+# date-utc: 2026-10-11T17:58:47Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/k8
+# cmd: GOFLAGS=-mod=readonly go test -count=1 ./cmd/gatekeeper ./internal/evidence
+# ----
+--- FAIL: TestRunRecordRejectsEmptyConfigFlag (0.12s)
+    config_test.go:141: record --config "": expected exit 2 and "--config is empty", got exit 0 (stderr: )
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.380s
+ok  	devsecops-gatekeeper/internal/evidence	0.970s
+FAIL
+# ----
+# exit: 1
+# end-utc: 2026-10-11T17:58:49Z

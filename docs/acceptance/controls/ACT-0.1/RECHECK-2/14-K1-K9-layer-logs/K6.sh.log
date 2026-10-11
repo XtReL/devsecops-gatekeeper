@@ -1,0 +1,81 @@
+warning: You appear to have cloned an empty repository.
+initialised evidence log github.com/octo/evidence-selftest/gatekeeper-evidence/v1 at /tmp/tmp.lv1QPrZZOp/init-clone
+== evidence-push_test: first record ==
+evidence-push: attempt 1/5
+From /tmp/tmp.lv1QPrZZOp/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 58170fb init
+[gatekeeper-evidence a4a807b] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000000.json
+To /tmp/tmp.lv1QPrZZOp/origin.git
+   58170fb..a4a807b  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: duplicate of the same run (no new entry) ==
+evidence-push: attempt 1/5
+From /tmp/tmp.lv1QPrZZOp/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at a4a807b evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+gatekeeper record: run 1001/1 already recorded
+evidence-push: run 1001/1 was already recorded
+== evidence-push_test: second, different run ==
+evidence-push: attempt 1/5
+From /tmp/tmp.lv1QPrZZOp/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at a4a807b evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+[gatekeeper-evidence 4010350] evidence: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb run 1002/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000001.json
+To /tmp/tmp.lv1QPrZZOp/origin.git
+   a4a807b..4010350  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: concurrent writer race ==
+evidence-push: attempt 1/5
+From /tmp/tmp.lv1QPrZZOp/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 4010350 evidence: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb run 1002/1
+[gatekeeper-evidence d04f9ba] evidence: cccccccccccccccccccccccccccccccccccccccc run 2001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000002.json
+To /tmp/tmp.lv1QPrZZOp/origin.git
+   4010350..d04f9ba  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+evidence-push: attempt 1/5
+From /tmp/tmp.lv1QPrZZOp/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+   4010350..d04f9ba  gatekeeper-evidence -> origin/gatekeeper-evidence
+HEAD is now at d04f9ba evidence: cccccccccccccccccccccccccccccccccccccccc run 2001/1
+[gatekeeper-evidence 694803b] evidence: dddddddddddddddddddddddddddddddddddddddd run 2002/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000003.json
+To /tmp/tmp.lv1QPrZZOp/origin.git
+   d04f9ba..694803b  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: verify ==
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1
+size:      4
+root:      TGWQmCMygdCxXhcssTQD0qh/N/JW45Hz7wjg/4PxSVs=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== evidence-push_test: clone with core.autocrlf=true still verifies ==
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1
+size:      4
+root:      TGWQmCMygdCxXhcssTQD0qh/N/JW45Hz7wjg/4PxSVs=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== evidence-push_test: custom config reaches record (epoch 2) ==
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+initialised evidence log github.com/octo/evidence-selftest/gatekeeper-evidence/v1/e2 at /tmp/tmp.lv1QPrZZOp/e2-init
+evidence-push: attempt 1/5
+From /tmp/tmp.lv1QPrZZOp/origin
+ * branch            gatekeeper-evidence-e2 -> FETCH_HEAD
+HEAD is now at 7b4f4bd init-e2
+[gatekeeper-evidence-e2 388883d] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 3001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000000.json
+To /tmp/tmp.lv1QPrZZOp/origin.git
+   7b4f4bd..388883d  HEAD -> gatekeeper-evidence-e2
+evidence-push: pushed
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1/e2
+size:      1
+root:      vr8/VbVWHQxTt8is41s72fehNJdujvoDqNXEYTA4SJg=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+evidence-push_test: OK

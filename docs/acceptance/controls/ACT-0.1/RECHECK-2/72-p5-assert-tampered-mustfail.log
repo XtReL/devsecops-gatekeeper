@@ -1,0 +1,49 @@
+# date-utc: 2026-10-11T18:09:50Z
+# cwd: /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2
+# cmd: echo 'tampered copy: missing-path log outcome=failure->success, reason text removed; epoch-2 log branch e2->epoch-1'; bash p5-assert.sh /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/p5neg 38162383246
+# ----
+tampered copy: missing-path log outcome=failure->success, reason text removed; epoch-2 log branch e2->epoch-1
+ok    прогон: событие push
+ok    прогон: ветка test/recheck-2-config
+ok    прогон: workflow recheck-2-config.yml
+ok    прогон: completed/success
+ok    заданий 5
+ok    задание 'build': success
+ok    задание 'target, config not set': success
+ok    задание 'target, config empty string': success
+ok    задание 'target, config on committed epoch-2 file': success
+ok    задание 'target, config on a missing path': success
+ok    лог есть: run-38162383246-job-114537824892-build.log
+ok    лог есть: run-38162383246-job-114537970806-target-config-not-set.log
+ok    лог есть: run-38162383246-job-114537970746-target-config-empty-string.log
+ok    лог есть: run-38162383246-job-114537970753-target-config-on-committed-epoch-2-file.log
+ok    лог есть: run-38162383246-job-114537970741-target-config-on-a-missing-path.log
+ok    build: шаг сборки action выполнен
+ok    build: бинарник исполняется (gatekeeper version)
+ok    target-unset: в with: нет config
+ok    target-unset: CONFIG пуст в env шага target
+ok    target-unset: шаг target success
+ok    target-unset: ASSERT OK
+ok    target-unset: branch=gatekeeper-evidence
+ok    target-unset: origin .../v1
+ok    target-empty: CONFIG пуст в env шага target
+ok    target-empty: шаг target success
+ok    target-empty: ASSERT OK
+ok    target-empty: branch=gatekeeper-evidence
+ok    target-empty: origin .../v1
+ok    target-epoch2: CONFIG = test/recheck-2/epoch2.json
+ok    target-epoch2: шаг target success
+ok    target-epoch2: ASSERT OK
+FAIL  target-epoch2: branch=gatekeeper-evidence-e2
+ok    target-epoch2: origin .../v1/e2
+ok    target-missing: CONFIG = test/recheck-2/does-not-exist.json
+FAIL  target-missing: шаг target failure
+FAIL  target-missing: причина read config <путь>
+ok    target-missing: код 2
+ok    target-missing: нет ложной причины does not verify
+ok    target-missing: ASSERT OK
+ok    ни в одном задании шаг record не выполнялся
+p5: FAIL
+# ----
+# exit: 1
+# end-utc: 2026-10-11T18:09:51Z

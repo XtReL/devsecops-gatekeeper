@@ -1,0 +1,20 @@
+# date-utc: 2026-10-11T18:03:35Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: echo "unauthenticated GitHub REST API, public repo"; for c in 6089a132e02e817817e679185a58ad68d7a36863 b6ea208d102e2230527282cc7ee0746cf5a14653 29f33266790a6d7a3f5ac9d8f019c8084df4cc65 ba73ba0b78ec91a4ac66bdd9ec9956ea8eee87c0 f7c2cfe1f5c4d63c295d2bb8647faa4f276f160a 71c92843c3a3482bf90f9cd00866a45fffc6c07d; do curl -sS https://api.github.com/repos/XtReL/devsecops-gatekeeper/commits/$c | python3 -I -c "import sys,json; d=json.load(sys.stdin); c=d[\"commit\"]; v=c[\"verification\"]; print(d[\"sha\"], \"author:\", c[\"author\"][\"name\"], c[\"author\"][\"date\"], \"committer:\", c[\"committer\"][\"name\"], c[\"committer\"][\"date\"], \"| verified:\", v[\"verified\"], \"reason:\", v[\"reason\"], \"verified_at:\", v.get(\"verified_at\"))"; done
+echo "== repo visibility:"; curl -sS https://api.github.com/repos/XtReL/devsecops-gatekeeper | python3 -I -c "import sys,json; d=json.load(sys.stdin); print(d[\"full_name\"], d[\"visibility\"], \"private=\", d[\"private\"], \"default_branch=\", d[\"default_branch\"])"
+echo "== branch fix/act-0.1 head:"; curl -sS https://api.github.com/repos/XtReL/devsecops-gatekeeper/branches/fix%2Fact-0.1 | python3 -I -c "import sys,json; d=json.load(sys.stdin); print(d[\"name\"], d[\"commit\"][\"sha\"])"
+# ----
+unauthenticated GitHub REST API, public repo
+6089a132e02e817817e679185a58ad68d7a36863 author: Claude 2026-10-11T17:43:00Z committer: Claude 2026-10-11T17:43:00Z | verified: True reason: valid verified_at: 2026-10-11T17:43:59Z
+b6ea208d102e2230527282cc7ee0746cf5a14653 author: Claude 2026-10-11T17:43:00Z committer: Claude 2026-10-11T17:43:00Z | verified: True reason: valid verified_at: 2026-10-11T17:43:59Z
+29f33266790a6d7a3f5ac9d8f019c8084df4cc65 author: Claude 2026-10-11T17:43:10Z committer: Claude 2026-10-11T17:43:10Z | verified: True reason: valid verified_at: 2026-10-11T17:43:59Z
+ba73ba0b78ec91a4ac66bdd9ec9956ea8eee87c0 author: Claude 2026-10-11T17:43:10Z committer: Claude 2026-10-11T17:43:10Z | verified: True reason: valid verified_at: 2026-10-11T17:43:59Z
+f7c2cfe1f5c4d63c295d2bb8647faa4f276f160a author: Claude 2026-10-11T12:45:28Z committer: Claude 2026-10-11T12:45:28Z | verified: True reason: valid verified_at: 2026-10-11T12:45:31Z
+71c92843c3a3482bf90f9cd00866a45fffc6c07d author: XtReL | DevSecOps Builder 2026-10-10T16:47:15Z committer: XtReL | DevSecOps Builder 2026-10-10T16:47:15Z | verified: False reason: unknown_key verified_at: None
+== repo visibility:
+XtReL/devsecops-gatekeeper public private= False default_branch= main
+== branch fix/act-0.1 head:
+fix/act-0.1 ba73ba0b78ec91a4ac66bdd9ec9956ea8eee87c0
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:03:38Z

@@ -1,0 +1,21 @@
+# date-utc: 2026-10-11T18:02:13Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/k6
+# cmd: patch -p1 < /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/K6.patch && GOFLAGS=-mod=readonly go test -count=1 -v -run '^TestRunRecordAppliesCustomConfig$' ./cmd/gatekeeper; GOFLAGS=-mod=readonly go test -count=1 -v -run '^TestRecordRejectsMissingNamedConfig$' ./internal/evidence
+# ----
+patching file internal/evidence/evidence.go
+=== RUN   TestRunRecordAppliesCustomConfig
+    main_test.go:306: record with a missing --config failed for the wrong reason (stderr: gatekeeper record: evidence: open log: filelog: current checkpoint does not verify under this log key: tlog: note has no valid signature from the expected key
+        )
+--- FAIL: TestRunRecordAppliesCustomConfig (0.12s)
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	0.794s
+FAIL
+=== RUN   TestRecordRejectsMissingNamedConfig
+    evidence_test.go:664: Record succeeded with a missing named config (silent fallback to epoch 1)
+--- FAIL: TestRecordRejectsMissingNamedConfig (0.01s)
+FAIL
+FAIL	devsecops-gatekeeper/internal/evidence	0.635s
+FAIL
+# ----
+# exit: 1
+# end-utc: 2026-10-11T18:02:16Z

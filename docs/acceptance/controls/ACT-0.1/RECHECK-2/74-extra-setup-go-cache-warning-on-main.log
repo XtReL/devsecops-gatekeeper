@@ -1,0 +1,20 @@
+# date-utc: 2026-10-11T18:10:11Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: A=https://api.github.com/repos/XtReL/devsecops-gatekeeper; r=$(curl -sS "$A/actions/workflows/gatekeeper.yml/runs?branch=main&per_page=1" | python3 -I -c "import sys,json; w=json.load(sys.stdin)[\"workflow_runs\"][0]; print(w[\"id\"], w[\"head_sha\"], w[\"event\"], w[\"conclusion\"], w[\"created_at\"])"); echo "latest gatekeeper.yml run on main: $r"; id=${r%% *}; for j in $(curl -sS "$A/actions/runs/$id/jobs" | python3 -I -c "import sys,json; [print(str(x[\"id\"])+\"|\"+x[\"name\"].replace(\" \",\"_\")) for x in json.load(sys.stdin)[\"jobs\"]]"); do jid=${j%%|*}; echo "job $j:"; curl -sS "$A/check-runs/$jid/annotations" | python3 -I -c "import sys,json; [print(\"   \", a[\"annotation_level\"], a[\"message\"][:160]) for a in json.load(sys.stdin)]"; done
+# ----
+latest gatekeeper.yml run on main: 36458075847 7e2f7b63fa71b4a9f3cb2a8c471a52119d7273f5 push success 2026-09-28T17:25:58Z
+job 109049416775|rotation_test.sh_self-test:
+    notice "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+job 109049417258|Scan:
+    warning Restore cache failed: Invalid pattern '/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.//go.sum'. Relative pathing '.' and '..' is not allowed.
+    notice "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+job 109049417359|action_self-test:
+    warning Restore cache failed: Invalid pattern '/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.//go.sum'. Relative pathing '.' and '..' is not allowed.
+    notice "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+job 109049417572|evidence-push.sh_self-test:
+    notice "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+job 109049642768|Record_evidence:
+    notice "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:10:14Z

@@ -1,0 +1,25 @@
+{
+  "total_count": 1,
+  "artifacts": [
+    {
+      "id": 11710962244,
+      "node_id": "MDg6QXJ0aWZhY3QxMTcxMDk2MjI0NA==",
+      "name": "recheck-2-gatekeeper",
+      "size_in_bytes": 7803062,
+      "url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/artifacts/11710962244",
+      "archive_download_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/artifacts/11710962244/zip",
+      "expired": false,
+      "digest": "sha256:4cdc68edaa3aa4b563d92468d7f7ca3970d4a6e62c93fc3d1a616621eeb93143",
+      "created_at": "2026-10-11T18:06:39Z",
+      "updated_at": "2026-10-11T18:06:39Z",
+      "expires_at": "2027-01-09T18:06:00Z",
+      "workflow_run": {
+        "id": 38162383246,
+        "repository_id": 1276264406,
+        "head_repository_id": 1276264406,
+        "head_branch": "test/recheck-2-config",
+        "head_sha": "363a6680fbd29d977514bdcc97c9978aeeea13da"
+      }
+    }
+  ]
+}

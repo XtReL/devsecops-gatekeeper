@@ -1,0 +1,10 @@
+initialised evidence log github.com/octo/r/gatekeeper-evidence/v1/e2 at /tmp/tmp.bMhtLAJCfu/init
+== case 1: config только по пути cfg/custom.json
+To /tmp/tmp.bMhtLAJCfu/o.git
+   80ccdcd..f3586cc  HEAD -> gatekeeper-evidence-e2
+evidence-push: pushed
+record step exit=0
+== case 2: тот же конфиг ещё и по пути по умолчанию
+evidence-push: run 1/1 was already recorded
+record step exit=0
+ASSERT OK (режим fixed): случай 1 exit=0, случай 2 exit=0

@@ -1,0 +1,44 @@
+# date-utc: 2026-10-11T18:02:59Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: echo "== README.md:9 @ba73ba0"; git show ba73ba0:README.md | sed -n 9p
+echo "== link targets in README.md:9:"; git show ba73ba0:README.md | sed -n 9p | grep -o -E "\(https://[^)]*\)"
+echo "== commit 71c92843c3a3482bf90f9cd00866a45fffc6c07d:"; git cat-file -t 71c92843c3a3482bf90f9cd00866a45fffc6c07d && git log -1 --format="%H %ad %s" --date=iso-strict 71c92843c3a3482bf90f9cd00866a45fffc6c07d
+echo "== branches containing it:"; git branch -r --contains 71c92843c3a3482bf90f9cd00866a45fffc6c07d
+echo "== file at that commit:"; git ls-tree 71c92843c3a3482bf90f9cd00866a45fffc6c07d docs/acceptance/ACT-0.1.md
+echo "== same blob on acceptance/act-v0 HEAD?"; git ls-tree origin/acceptance/act-v0 docs/acceptance/ACT-0.1.md; git log --format="%h %ad %s" --date=iso-strict origin/acceptance/act-v0 -- docs/acceptance/ACT-0.1.md
+echo "== ACT-0.1.md present in main / object?"; git ls-tree origin/main docs/acceptance/ACT-0.1.md; git ls-tree ba73ba0 docs/acceptance/ACT-0.1.md; echo "(empty = absent)"
+echo "== decision on cloud mode in ACT-0.1@71c9284:"; git show 71c92843c3a3482bf90f9cd00866a45fffc6c07d:docs/acceptance/ACT-0.1.md | grep -n -i -E "облачн.*не принимать|не принимать" | head
+echo "== REV-2 п.4 (source of the 2026-10-10 claim):"; git show origin/acceptance/act-v0:docs/acceptance/ACT-0.1-REV-2.md | grep -n -E "404|endpoint offline|2026-10-10|отключил" | head -20
+# ----
+== README.md:9 @ba73ba0
+Ранний прототип. Основной режим — GitHub Action с подписанными аттестациями каждой проверки (этап 3 в плане Trust Core; см. «Подключение»). Облачный режим (GitHub App → API → очередь → сканер) — прототип, приёмку не проходил ([ACT-0.1](https://github.com/XtReL/devsecops-gatekeeper/blob/71c92843c3a3482bf90f9cd00866a45fffc6c07d/docs/acceptance/ACT-0.1.md): решение «не принимать»). По данным ACT-0.1-REV-2 на 2026-10-10 не был развёрнут: в тот день вебхук GitHub App получал от туннельного сервиса ответ 404 «endpoint offline», затем владелец отключил вебхук. Позднее состояние не проверялось.
+== link targets in README.md:9:
+(https://github.com/XtReL/devsecops-gatekeeper/blob/71c92843c3a3482bf90f9cd00866a45fffc6c07d/docs/acceptance/ACT-0.1.md)
+== commit 71c92843c3a3482bf90f9cd00866a45fffc6c07d:
+commit
+71c92843c3a3482bf90f9cd00866a45fffc6c07d 2026-10-10T16:47:15+00:00 docs(acceptance): ACT-0.1 self-check of the repository (method v0.1)
+== branches containing it:
+  origin/acceptance/act-v0
+== file at that commit:
+100644 blob 59f3eb90337d694b0f5052bc0cd0bcba7dff64fb	docs/acceptance/ACT-0.1.md
+== same blob on acceptance/act-v0 HEAD?
+100644 blob 59f3eb90337d694b0f5052bc0cd0bcba7dff64fb	docs/acceptance/ACT-0.1.md
+71c9284 2026-10-10T16:47:15+00:00 docs(acceptance): ACT-0.1 self-check of the repository (method v0.1)
+== ACT-0.1.md present in main / object?
+(empty = absent)
+== decision on cloud mode in ACT-0.1@71c9284:
+153:не принимать.** До исправления C8, C36, C37 и согласования модели
+== REV-2 п.4 (source of the 2026-10-10 claim):
+9:| Дата | 2026-10-10 |
+10:| Тип | поправки к REV-1 по черновику методики 0.2 (правила из чата владельца от 2026-10-10) |
+50:Правильно: «ревизия акта по черновику методики 0.2 (правила из чата владельца от 2026-10-10)».
+76:- 2026-10-10 в 16:47 UTC две доставки вебхука GitHub App получили от туннельного сервиса ответ 404 с ошибкой «endpoint offline».
+78:- После этого владелец отключил вебхук.
+86:Статус действует на 2026-10-10. После отключения вебхука облачная часть не получает событий. Если вебхук включат снова или систему развернут, C4 нужно проверять заново.
+90:В REV-1 написано, что сведения записаны «без перепроверки». Это неточно. Составитель поправок читал клон репозитория на `7e2f7b6` и страницы ghcr 2026-10-10. Эта сессия сверила все пункты, кроме страниц ghcr, через `git show 7e2f7b6:путь` и `git log`. Сеть для этого не нужна.
+98:| Образы `devsecops-gatekeeper-api` и `devsecops-gatekeeper-scanner` открываются без входа, теги `latest` и `7cf85ee` | страницы ghcr, прочитаны 2026-10-10 составителем поправок | Не перепроверено в этой сессии: нет сети. |
+108:3. **Возраст образов.** В Р2 REV-1 написано «около 4 месяцев назад». От 2026-06-22 до 2026-10-10 прошло 110 дней, это около 3,6 месяца.
+153:| Шапка, строка «Тип» | «ревизия акта по методике 0.2» | «по черновику методики 0.2 (правила из чата владельца от 2026-10-10)» (п. 2) |
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:02:59Z

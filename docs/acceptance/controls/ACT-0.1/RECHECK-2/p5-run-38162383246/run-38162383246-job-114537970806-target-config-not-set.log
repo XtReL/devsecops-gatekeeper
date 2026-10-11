@@ -1,0 +1,267 @@
+﻿2026-10-11T18:06:45.0796560Z Current runner version: '2.337.0'
+2026-10-11T18:06:45.0815546Z ##[group]Runner Image Provisioner
+2026-10-11T18:06:45.0816372Z Hosted Compute Agent
+2026-10-11T18:06:45.0816864Z Version: 20261002.596
+2026-10-11T18:06:45.0817395Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+2026-10-11T18:06:45.0818056Z Build Date: 2026-10-02T22:28:27Z
+2026-10-11T18:06:45.0818623Z Worker ID: {48b9a666-a74c-4873-b5f1-fa1aced8375e}
+2026-10-11T18:06:45.0819280Z Region: westus3
+2026-10-11T18:06:45.0819738Z Cloud: Azure
+2026-10-11T18:06:45.0820203Z ##[endgroup]
+2026-10-11T18:06:45.0821633Z ##[group]Operating System
+2026-10-11T18:06:45.0822178Z Ubuntu
+2026-10-11T18:06:45.0822630Z 24.04.5
+2026-10-11T18:06:45.0823060Z LTS
+2026-10-11T18:06:45.0823472Z ##[endgroup]
+2026-10-11T18:06:45.0823957Z ##[group]Runner Image
+2026-10-11T18:06:45.0824479Z Image: ubuntu-24.04
+2026-10-11T18:06:45.0825281Z Version: 20261004.327.1
+2026-10-11T18:06:45.0826295Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-11T18:06:45.0827533Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+2026-10-11T18:06:45.0828386Z ##[endgroup]
+2026-10-11T18:06:45.0829329Z ##[group]GITHUB_TOKEN Permissions
+2026-10-11T18:06:45.0831344Z Contents: read
+2026-10-11T18:06:45.0831861Z Metadata: read
+2026-10-11T18:06:45.0832338Z ##[endgroup]
+2026-10-11T18:06:45.0833981Z Secret source: Actions
+2026-10-11T18:06:45.0834800Z Cache mode: write
+2026-10-11T18:06:45.0835355Z Prepare workflow directory
+2026-10-11T18:06:45.1094478Z Prepare all required actions
+2026-10-11T18:06:45.1152327Z Getting action download info
+2026-10-11T18:06:45.4278776Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-10-11T18:06:46.6547258Z Download action repository 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c' (SHA:3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c)
+2026-10-11T18:06:48.0709121Z Complete job name: target, config not set
+2026-10-11T18:06:48.1262384Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-10-11T18:06:48.1263135Z with:
+2026-10-11T18:06:48.1263518Z   persist-credentials: false
+2026-10-11T18:06:48.1263944Z   repository: XtReL/devsecops-gatekeeper
+2026-10-11T18:06:48.1266585Z   token: ***
+2026-10-11T18:06:48.1266975Z   ssh-strict: true
+2026-10-11T18:06:48.1267333Z   ssh-user: git
+2026-10-11T18:06:48.1267689Z   clean: true
+2026-10-11T18:06:48.1268053Z   sparse-checkout-cone-mode: true
+2026-10-11T18:06:48.1268466Z   fetch-depth: 1
+2026-10-11T18:06:48.1268837Z   fetch-tags: false
+2026-10-11T18:06:48.1269233Z   show-progress: true
+2026-10-11T18:06:48.1269602Z   lfs: false
+2026-10-11T18:06:48.1269942Z   submodules: false
+2026-10-11T18:06:48.1270568Z   set-safe-directory: true
+2026-10-11T18:06:48.1270999Z   allow-unsafe-pr-checkout: false
+2026-10-11T18:06:48.1271529Z ##[endgroup]
+2026-10-11T18:06:48.2118636Z Syncing repository: XtReL/devsecops-gatekeeper
+2026-10-11T18:06:48.2121392Z ##[group]Getting Git version info
+2026-10-11T18:06:48.2122216Z Working directory is '/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper'
+2026-10-11T18:06:48.2123647Z [command]/usr/bin/git version
+2026-10-11T18:06:48.6790827Z git version 2.55.0
+2026-10-11T18:06:48.6806555Z ##[endgroup]
+2026-10-11T18:06:48.6816431Z Temporarily overriding HOME='/home/runner/work/_temp/29b415f1-1d6b-4916-bafe-e3e486ee9b17' before making global git config changes
+2026-10-11T18:06:48.6817376Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-11T18:06:48.6821972Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper
+2026-10-11T18:06:48.7764448Z Deleting the contents of '/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper'
+2026-10-11T18:06:48.7767625Z ##[group]Determining repository object format
+2026-10-11T18:06:48.7769272Z ##[endgroup]
+2026-10-11T18:06:48.7769961Z ##[group]Initializing the repository
+2026-10-11T18:06:48.7773836Z [command]/usr/bin/git init /home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper
+2026-10-11T18:06:48.9481097Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-11T18:06:48.9482114Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-11T18:06:48.9482927Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-11T18:06:48.9483572Z hint: call:
+2026-10-11T18:06:48.9483863Z hint:
+2026-10-11T18:06:48.9484281Z hint: 	git config --global init.defaultBranch <name>
+2026-10-11T18:06:48.9484636Z hint:
+2026-10-11T18:06:48.9484982Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-11T18:06:48.9485490Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-11T18:06:48.9485856Z hint:
+2026-10-11T18:06:48.9486181Z hint: 	git branch -m <name>
+2026-10-11T18:06:48.9486463Z hint:
+2026-10-11T18:06:48.9486891Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-11T18:06:48.9487571Z Initialized empty Git repository in /home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git/
+2026-10-11T18:06:48.9491939Z [command]/usr/bin/git remote add origin https://github.com/XtReL/devsecops-gatekeeper
+2026-10-11T18:06:49.0494333Z ##[endgroup]
+2026-10-11T18:06:49.0494885Z ##[group]Disabling automatic garbage collection
+2026-10-11T18:06:49.0497877Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-11T18:06:49.0529806Z ##[endgroup]
+2026-10-11T18:06:49.0530533Z ##[group]Setting up auth
+2026-10-11T18:06:49.0531053Z Removing SSH command configuration
+2026-10-11T18:06:49.0536123Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-11T18:06:49.0564143Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-11T18:06:49.7544889Z Removing HTTP extra header
+2026-10-11T18:06:49.7551907Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-11T18:06:49.7579998Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-11T18:06:49.7756861Z Removing includeIf entries pointing to credentials config files
+2026-10-11T18:06:49.7764472Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-11T18:06:49.7832287Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-11T18:06:49.8004876Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-11T18:06:49.8036646Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git.path /home/runner/work/_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:49.8064733Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:49.8095449Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:49.8122703Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:49.8151598Z ##[endgroup]
+2026-10-11T18:06:49.8152297Z ##[group]Fetching the repository
+2026-10-11T18:06:49.8153626Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +363a6680fbd29d977514bdcc97c9978aeeea13da:refs/remotes/origin/test/recheck-2-config
+2026-10-11T18:06:50.9593610Z From https://github.com/XtReL/devsecops-gatekeeper
+2026-10-11T18:06:50.9594401Z  * [new ref]         363a6680fbd29d977514bdcc97c9978aeeea13da -> origin/test/recheck-2-config
+2026-10-11T18:06:50.9602272Z [command]/usr/bin/git branch --list --remote origin/test/recheck-2-config
+2026-10-11T18:06:50.9624557Z   origin/test/recheck-2-config
+2026-10-11T18:06:50.9631394Z [command]/usr/bin/git rev-parse refs/remotes/origin/test/recheck-2-config
+2026-10-11T18:06:50.9650809Z 363a6680fbd29d977514bdcc97c9978aeeea13da
+2026-10-11T18:06:50.9653345Z ##[endgroup]
+2026-10-11T18:06:50.9654087Z ##[group]Determining the checkout info
+2026-10-11T18:06:50.9654956Z ##[endgroup]
+2026-10-11T18:06:50.9658524Z [command]/usr/bin/git sparse-checkout disable
+2026-10-11T18:06:51.0452683Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-11T18:06:51.0478234Z ##[group]Checking out the ref
+2026-10-11T18:06:51.0482239Z [command]/usr/bin/git checkout --progress --force -B test/recheck-2-config refs/remotes/origin/test/recheck-2-config
+2026-10-11T18:06:51.0563115Z Switched to a new branch 'test/recheck-2-config'
+2026-10-11T18:06:51.0567920Z branch 'test/recheck-2-config' set up to track 'origin/test/recheck-2-config'.
+2026-10-11T18:06:51.0572314Z ##[endgroup]
+2026-10-11T18:06:51.0606226Z [command]/usr/bin/git log -1 --format=%H
+2026-10-11T18:06:51.0625946Z 363a6680fbd29d977514bdcc97c9978aeeea13da
+2026-10-11T18:06:51.0632632Z ##[group]Removing auth
+2026-10-11T18:06:51.0633136Z Removing SSH command configuration
+2026-10-11T18:06:51.0636137Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-11T18:06:51.0660416Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-11T18:06:51.0819009Z Removing HTTP extra header
+2026-10-11T18:06:51.0821626Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-11T18:06:51.0844582Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-11T18:06:51.1001822Z Removing includeIf entries pointing to credentials config files
+2026-10-11T18:06:51.1003748Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-11T18:06:51.1024633Z includeif.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git.path
+2026-10-11T18:06:51.1025849Z includeif.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git/worktrees/*.path
+2026-10-11T18:06:51.1026645Z includeif.gitdir:/github/workspace/.git.path
+2026-10-11T18:06:51.1027298Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-11T18:06:51.1032294Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git.path
+2026-10-11T18:06:51.1050518Z /home/runner/work/_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:51.1058593Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-54dd621d\-a576\-4e16\-b394\-50f194621805\.config
+2026-10-11T18:06:51.1087229Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git/worktrees/*.path
+2026-10-11T18:06:51.1104230Z /home/runner/work/_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:51.1110227Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-54dd621d\-a576\-4e16\-b394\-50f194621805\.config
+2026-10-11T18:06:51.1136444Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-11T18:06:51.1167619Z /github/runner_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:51.1169416Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-54dd621d\-a576\-4e16\-b394\-50f194621805\.config
+2026-10-11T18:06:51.1203429Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-11T18:06:51.1241452Z /github/runner_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config
+2026-10-11T18:06:51.1243457Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-54dd621d\-a576\-4e16\-b394\-50f194621805\.config
+2026-10-11T18:06:51.1271065Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-11T18:06:51.1422036Z Removing credentials config '/home/runner/work/_temp/git-credentials-54dd621d-a576-4e16-b394-50f194621805.config'
+2026-10-11T18:06:51.1429685Z ##[endgroup]
+2026-10-11T18:06:51.1618312Z ##[group]Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+2026-10-11T18:06:51.1618717Z with:
+2026-10-11T18:06:51.1618981Z   name: recheck-2-gatekeeper
+2026-10-11T18:06:51.1619279Z   path: /home/runner/work/_temp
+2026-10-11T18:06:51.1619578Z   merge-multiple: false
+2026-10-11T18:06:51.1619920Z   repository: XtReL/devsecops-gatekeeper
+2026-10-11T18:06:51.1620222Z   run-id: 38162383246
+2026-10-11T18:06:51.1620970Z   skip-decompress: false
+2026-10-11T18:06:51.1621244Z   digest-mismatch: error
+2026-10-11T18:06:51.1621518Z ##[endgroup]
+2026-10-11T18:06:51.2789769Z Downloading single artifact
+2026-10-11T18:06:51.5071178Z Preparing to download the following artifacts:
+2026-10-11T18:06:51.5072562Z - recheck-2-gatekeeper (ID: 11710962244, Size: 7803062, Expected Digest: sha256:4cdc68edaa3aa4b563d92468d7f7ca3970d4a6e62c93fc3d1a616621eeb93143)
+2026-10-11T18:06:51.9347535Z Redirecting to blob download url: https://productionresultssa6.blob.core.windows.net/actions-results/4dad48e5-0ebd-84c2-ae48-27c38f7bc6af/workflow-job-run-ac9480fa-8283-5820-9f68-19f479b6e3dd/artifacts/5e8d2271f0910d3e4ba08ae517187c64425aa62970d937c05543326cc039db8e.zip
+2026-10-11T18:06:51.9349241Z Starting download of artifact to: /home/runner/work/_temp
+2026-10-11T18:06:52.1501808Z (node:2174) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+2026-10-11T18:06:52.1503255Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-11T18:06:52.8463171Z SHA256 digest of downloaded artifact is 4cdc68edaa3aa4b563d92468d7f7ca3970d4a6e62c93fc3d1a616621eeb93143
+2026-10-11T18:06:52.8463822Z Artifact download completed successfully.
+2026-10-11T18:06:52.8464311Z Total of 1 artifact(s) downloaded
+2026-10-11T18:06:52.8466589Z Download artifact has finished successfully
+2026-10-11T18:06:52.8723681Z Prepare all required actions
+2026-10-11T18:06:52.8724271Z Getting action download info
+2026-10-11T18:06:52.9914671Z Download action repository 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+2026-10-11T18:06:53.8876991Z ##[group]Run ./
+2026-10-11T18:06:53.8877291Z with:
+2026-10-11T18:06:53.8877596Z   mode: target
+2026-10-11T18:06:53.8877897Z   gatekeeper: /home/runner/work/_temp/gatekeeper
+2026-10-11T18:06:53.8878232Z   source: .
+2026-10-11T18:06:53.8878500Z   evidence: evidence
+2026-10-11T18:06:53.8878810Z ##[endgroup]
+2026-10-11T18:06:53.8938753Z ##[start-action display=Validate mode;id=target.__run]
+2026-10-11T18:06:53.8978203Z ##[group]Run case "$MODE" in
+2026-10-11T18:06:53.8978628Z [36;1mcase "$MODE" in[0m
+2026-10-11T18:06:53.8978942Z [36;1m  build|scan|target|record) ;;[0m
+2026-10-11T18:06:53.8979482Z [36;1m  *)[0m
+2026-10-11T18:06:53.8980039Z [36;1m    echo "::error::gatekeeper: unknown mode '$MODE' (expected build, scan, target, or record)"[0m
+2026-10-11T18:06:53.8980827Z [36;1m    exit 1[0m
+2026-10-11T18:06:53.8981095Z [36;1m    ;;[0m
+2026-10-11T18:06:53.8981354Z [36;1mesac[0m
+2026-10-11T18:06:54.3271620Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-11T18:06:54.3272048Z env:
+2026-10-11T18:06:54.3272427Z   MODE: target
+2026-10-11T18:06:54.3272733Z ##[endgroup]
+2026-10-11T18:06:54.3697010Z ##[end-action id=target.__run;outcome=success;conclusion=success;duration_ms=475]
+2026-10-11T18:06:54.3699795Z ##[start-action display=Set up Go (mode=build);id=target.__actions_setup-go]
+2026-10-11T18:06:54.3715358Z ##[end-action id=target.__actions_setup-go;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-11T18:06:54.3717886Z ##[start-action display=Build gatekeeper (mode=build);id=target.build]
+2026-10-11T18:06:54.3725528Z ##[end-action id=target.build;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-11T18:06:54.3728448Z ##[start-action display=Make gatekeeper executable (mode=scan);id=target.__run_2]
+2026-10-11T18:06:54.3732559Z ##[end-action id=target.__run_2;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-11T18:06:54.3735039Z ##[start-action display=Scan (mode=scan);id=target.scan]
+2026-10-11T18:06:54.3738683Z ##[end-action id=target.scan;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-11T18:06:54.3741062Z ##[start-action display=Make gatekeeper executable (mode=target);id=target.__run_3]
+2026-10-11T18:06:54.4059873Z ##[group]Run chmod +x "$GATEKEEPER_BIN"
+2026-10-11T18:06:54.4060237Z [36;1mchmod +x "$GATEKEEPER_BIN"[0m
+2026-10-11T18:06:54.4094679Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-11T18:06:54.4095066Z env:
+2026-10-11T18:06:54.4095443Z   GATEKEEPER_BIN: /home/runner/work/_temp/gatekeeper
+2026-10-11T18:06:54.4095804Z ##[endgroup]
+2026-10-11T18:06:54.4174304Z ##[end-action id=target.__run_3;outcome=success;conclusion=success;duration_ms=43]
+2026-10-11T18:06:54.4177491Z ##[start-action display=Resolve evidence target (mode=target);id=target.target]
+2026-10-11T18:06:54.4256505Z ##[group]Run # --config only when the input is set: an explicit config must exist,
+2026-10-11T18:06:54.4257165Z [36;1m# --config only when the input is set: an explicit config must exist,[0m
+2026-10-11T18:06:54.4257744Z [36;1m# an omitted one falls back to .gatekeeper/evidence.json / epoch 1.[0m
+2026-10-11T18:06:54.4258196Z [36;1mconfig_args=()[0m
+2026-10-11T18:06:54.4258493Z [36;1mif [ -n "$CONFIG" ]; then[0m
+2026-10-11T18:06:54.4258895Z [36;1m  config_args=(--config "$CONFIG")[0m
+2026-10-11T18:06:54.4259226Z [36;1mfi[0m
+2026-10-11T18:06:54.4259918Z [36;1m"$GATEKEEPER_BIN" evidence-target --repo "$REPO" ${config_args[@]+"${config_args[@]}"} >> "$GITHUB_OUTPUT"[0m
+2026-10-11T18:06:54.4289543Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-11T18:06:54.4290074Z env:
+2026-10-11T18:06:54.4290673Z   GATEKEEPER_BIN: /home/runner/work/_temp/gatekeeper
+2026-10-11T18:06:54.4291084Z   REPO: XtReL/devsecops-gatekeeper
+2026-10-11T18:06:54.4291632Z   CONFIG: 
+2026-10-11T18:06:54.4291954Z ##[endgroup]
+2026-10-11T18:06:54.4411013Z ##[end-action id=target.target;outcome=success;conclusion=success;duration_ms=23]
+2026-10-11T18:06:54.4414008Z ##[start-action display=Make gatekeeper executable (mode=record);id=target.__run_4]
+2026-10-11T18:06:54.4417981Z ##[end-action id=target.__run_4;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-11T18:06:54.4422339Z ##[start-action display=Record evidence (mode=record);id=target.record]
+2026-10-11T18:06:54.4426060Z ##[end-action id=target.record;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-11T18:06:54.4546002Z ##[group]Run set -euo pipefail
+2026-10-11T18:06:54.4546444Z [36;1mset -euo pipefail[0m
+2026-10-11T18:06:54.4546794Z [36;1mecho "branch=$BRANCH"[0m
+2026-10-11T18:06:54.4547134Z [36;1mecho "origin=$ORIGIN"[0m
+2026-10-11T18:06:54.4547604Z [36;1mif [ "$BRANCH" != "gatekeeper-evidence" ]; then[0m
+2026-10-11T18:06:54.4548202Z [36;1m  echo "::error::RECHECK-2 target-unset: expected branch 'gatekeeper-evidence', got '$BRANCH'"[0m
+2026-10-11T18:06:54.4548733Z [36;1m  exit 1[0m
+2026-10-11T18:06:54.4549011Z [36;1mfi[0m
+2026-10-11T18:06:54.4549393Z [36;1mif [ "$ORIGIN" != "github.com/$REPO/gatekeeper-evidence/v1" ]; then[0m
+2026-10-11T18:06:54.4550057Z [36;1m  echo "::error::RECHECK-2 target-unset: expected origin 'github.com/$REPO/gatekeeper-evidence/v1', got '$ORIGIN'"[0m
+2026-10-11T18:06:54.4550820Z [36;1m  exit 1[0m
+2026-10-11T18:06:54.4551152Z [36;1mfi[0m
+2026-10-11T18:06:54.4551484Z [36;1mecho "RECHECK-2 target-unset: ASSERT OK"[0m
+2026-10-11T18:06:54.4579911Z shell: /usr/bin/bash -e {0}
+2026-10-11T18:06:54.4580565Z env:
+2026-10-11T18:06:54.4580863Z   BRANCH: gatekeeper-evidence
+2026-10-11T18:06:54.4581311Z   ORIGIN: github.com/XtReL/devsecops-gatekeeper/gatekeeper-evidence/v1
+2026-10-11T18:06:54.4581780Z   REPO: XtReL/devsecops-gatekeeper
+2026-10-11T18:06:54.4582103Z ##[endgroup]
+2026-10-11T18:06:54.4657078Z branch=gatekeeper-evidence
+2026-10-11T18:06:54.4657664Z origin=github.com/XtReL/devsecops-gatekeeper/gatekeeper-evidence/v1
+2026-10-11T18:06:54.4658548Z RECHECK-2 target-unset: ASSERT OK
+2026-10-11T18:06:54.4909823Z Post job cleanup.
+2026-10-11T18:06:54.5061209Z Post job cleanup.
+2026-10-11T18:06:54.5974681Z [command]/usr/bin/git version
+2026-10-11T18:06:54.6022251Z git version 2.55.0
+2026-10-11T18:06:54.6055390Z Temporarily overriding HOME='/home/runner/work/_temp/4ea2b055-44ac-4f12-900b-795c3c13b665' before making global git config changes
+2026-10-11T18:06:54.6056527Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-11T18:06:54.6060686Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/devsecops-gatekeeper/devsecops-gatekeeper
+2026-10-11T18:06:54.6252579Z Removing SSH command configuration
+2026-10-11T18:06:54.6259281Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-11T18:06:54.6288229Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-11T18:06:54.6470068Z Removing HTTP extra header
+2026-10-11T18:06:54.6474793Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-11T18:06:54.6506785Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-11T18:06:54.6672801Z Removing includeIf entries pointing to credentials config files
+2026-10-11T18:06:54.6676072Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-11T18:06:54.6699997Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-11T18:06:54.6979108Z Cleaning up orphan processes

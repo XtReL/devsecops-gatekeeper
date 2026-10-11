@@ -1,0 +1,6 @@
+--- FAIL: TestRunRecordRejectsEmptyConfigFlag (0.08s)
+    config_test.go:141: record --config "": expected exit 2 and "--config is empty", got exit 0 (stderr: )
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.316s
+ok  	devsecops-gatekeeper/internal/evidence	0.902s
+FAIL

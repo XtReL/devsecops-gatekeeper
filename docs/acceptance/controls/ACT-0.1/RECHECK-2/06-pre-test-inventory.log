@@ -1,0 +1,33 @@
+# date-utc: 2026-10-11T17:55:33Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/wt
+# cmd: for c in f7c2cfe ba73ba0; do n=$(git grep -h -E "^func Test[A-Za-z0-9_]*\(t \*testing\.T\)" $c -- "*_test.go" | wc -l); echo "$c Test-funcs=$n"; done
+echo "--- added/removed Test funcs f7c2cfe..ba73ba0:"; diff <(git grep -h -o -E "^func Test[A-Za-z0-9_]*" f7c2cfe -- "*_test.go" | sort) <(git grep -h -o -E "^func Test[A-Za-z0-9_]*" ba73ba0 -- "*_test.go" | sort)
+echo "--- t.Skip / testing.Short:"; git grep -n -E "t\.Skip|testing\.Short" ba73ba0 -- "*_test.go" || echo none
+echo "--- //go:build ignore:"; git grep -l -E "^//go:build ignore" ba73ba0 || echo none
+echo "--- *.bak / disabled test files:"; git ls-tree -r --name-only ba73ba0 | grep -E "_test\.go\.|\.bak$" || echo none
+echo "--- CI go test command (ci.yml) and check.sh:"; git grep -n "go test" ba73ba0 -- .github/workflows/ci.yml scripts/check.sh
+echo "--- .github and scripts/check.sh changed f7c2cfe..ba73ba0:"; git diff --stat f7c2cfe ba73ba0 -- .github scripts/check.sh; echo "(empty = unchanged)"
+# ----
+f7c2cfe Test-funcs=44
+ba73ba0 Test-funcs=45
+--- added/removed Test funcs f7c2cfe..ba73ba0:
+31a32
+> func TestRunRecordRejectsEmptyConfigFlag
+--- t.Skip / testing.Short:
+none
+--- //go:build ignore:
+ba73ba0:scripts/github_sim.go
+ba73ba0:scripts/spicedb_init.go
+ba73ba0:scripts/stripe_sim.go
+--- *.bak / disabled test files:
+internal/billing/webhook_test.go.bak
+--- CI go test command (ci.yml) and check.sh:
+ba73ba0:.github/workflows/ci.yml:84:          go test -v -race -timeout 30s ./...
+ba73ba0:.github/workflows/ci.yml:91:      # go test не встраивает список модульных зависимостей в собранный
+ba73ba0:scripts/check.sh:37:echo "check: go test -race -timeout 30s ./..."
+ba73ba0:scripts/check.sh:38:go test -race -timeout 30s ./...
+--- .github and scripts/check.sh changed f7c2cfe..ba73ba0:
+(empty = unchanged)
+# ----
+# exit: 0
+# end-utc: 2026-10-11T17:55:33Z

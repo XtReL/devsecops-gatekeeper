@@ -1,0 +1,15 @@
+# date-utc: 2026-10-11T18:01:56Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/rb-oldtests
+# cmd: GOFLAGS=-mod=readonly go test -count=1 -v -run "^TestRunRecordAppliesCustomConfig$" ./cmd/gatekeeper; GOFLAGS=-mod=readonly go test -count=1 -v -run "^TestRecordRejectsMissingNamedConfig$" ./internal/evidence
+# ----
+=== RUN   TestRunRecordAppliesCustomConfig
+--- PASS: TestRunRecordAppliesCustomConfig (0.08s)
+PASS
+ok  	devsecops-gatekeeper/cmd/gatekeeper	0.822s
+=== RUN   TestRecordRejectsMissingNamedConfig
+--- PASS: TestRecordRejectsMissingNamedConfig (0.00s)
+PASS
+ok  	devsecops-gatekeeper/internal/evidence	0.648s
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:01:59Z

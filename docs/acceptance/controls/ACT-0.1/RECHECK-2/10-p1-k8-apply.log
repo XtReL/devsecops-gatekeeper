@@ -1,0 +1,23 @@
+# date-utc: 2026-10-11T17:58:44Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/k8
+# cmd: sha256sum /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/K8.patch; patch -p1 --dry-run < /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/K8.patch && patch -p1 < /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/K8.patch && diff -u /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/ba73ba0/cmd/gatekeeper/main.go cmd/gatekeeper/main.go; true
+# ----
+2b7c660a1e5aa8a37f5e860c6aa8cad326e2a65fa60796a95c482b0668dae24b  /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/K8.patch
+checking file cmd/gatekeeper/main.go
+patching file cmd/gatekeeper/main.go
+--- /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/ba73ba0/cmd/gatekeeper/main.go	2026-10-11 17:43:10.000000000 +0000
++++ cmd/gatekeeper/main.go	2026-10-11 17:58:44.263481603 +0000
+@@ -197,10 +197,6 @@
+ 	if err := fs.Parse(args); err != nil {
+ 		return 2
+ 	}
+-	if err := checkConfigFlag(fs, *config); err != nil {
+-		fmt.Fprintf(os.Stderr, "gatekeeper %s: %v\n", fs.Name(), err)
+-		return 2
+-	}
+ 	if *result == "" || *dir == "" || *repo == "" || *commit == "" || *runID == "" || *runAttempt == "" {
+ 		fmt.Fprintln(os.Stderr, "gatekeeper record: --result, --evidence, --repo, --commit, --run-id and --run-attempt are required")
+ 		return 2
+# ----
+# exit: 0
+# end-utc: 2026-10-11T17:58:44Z

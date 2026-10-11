@@ -1,0 +1,473 @@
+{
+  "total_count": 5,
+  "jobs": [
+    {
+      "id": 114537824892,
+      "run_id": 38162383246,
+      "workflow_name": "RECHECK-2 config input",
+      "head_branch": "test/recheck-2-config",
+      "run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/runs/38162383246",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOTBI_1s8AAAAaqvyCfA",
+      "head_sha": "363a6680fbd29d977514bdcc97c9978aeeea13da",
+      "url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/jobs/114537824892",
+      "html_url": "https://github.com/XtReL/devsecops-gatekeeper/actions/runs/38162383246/job/114537824892",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-11T18:06:00Z",
+      "started_at": "2026-10-11T18:06:02Z",
+      "completed_at": "2026-10-11T18:06:42Z",
+      "name": "build",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-11T18:06:03Z",
+          "completed_at": "2026-10-11T18:06:03Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-11T18:06:03Z",
+          "completed_at": "2026-10-11T18:06:04Z"
+        },
+        {
+          "name": "Build gatekeeper",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-11T18:06:04Z",
+          "completed_at": "2026-10-11T18:06:37Z"
+        },
+        {
+          "name": "Check build output",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-11T18:06:37Z",
+          "completed_at": "2026-10-11T18:06:37Z"
+        },
+        {
+          "name": "Upload binary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-11T18:06:37Z",
+          "completed_at": "2026-10-11T18:06:39Z"
+        },
+        {
+          "name": "Post Build gatekeeper",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-11T18:06:39Z",
+          "completed_at": "2026-10-11T18:06:39Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-11T18:06:39Z",
+          "completed_at": "2026-10-11T18:06:39Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-11T18:06:39Z",
+          "completed_at": "2026-10-11T18:06:39Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/check-runs/114537824892",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000278,
+      "runner_name": "GitHub Actions 1000000278",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 114537970741,
+      "run_id": 38162383246,
+      "workflow_name": "RECHECK-2 config input",
+      "head_branch": "test/recheck-2-config",
+      "run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/runs/38162383246",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOTBI_1s8AAAAaqv68NQ",
+      "head_sha": "363a6680fbd29d977514bdcc97c9978aeeea13da",
+      "url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/jobs/114537970741",
+      "html_url": "https://github.com/XtReL/devsecops-gatekeeper/actions/runs/38162383246/job/114537970741",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-11T18:06:42Z",
+      "started_at": "2026-10-11T18:06:43Z",
+      "completed_at": "2026-10-11T18:06:50Z",
+      "name": "target, config on a missing path",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-11T18:06:44Z",
+          "completed_at": "2026-10-11T18:06:45Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-11T18:06:45Z",
+          "completed_at": "2026-10-11T18:06:46Z"
+        },
+        {
+          "name": "Download binary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-11T18:06:46Z",
+          "completed_at": "2026-10-11T18:06:47Z"
+        },
+        {
+          "name": "Confirm the path is missing",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-11T18:06:47Z",
+          "completed_at": "2026-10-11T18:06:47Z"
+        },
+        {
+          "name": "Resolve evidence target (expected to fail)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-11T18:06:47Z",
+          "completed_at": "2026-10-11T18:06:48Z"
+        },
+        {
+          "name": "Check the step failed with no outputs",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-11T18:06:48Z",
+          "completed_at": "2026-10-11T18:06:48Z"
+        },
+        {
+          "name": "Post Resolve evidence target (expected to fail)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-11T18:06:48Z",
+          "completed_at": "2026-10-11T18:06:48Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-11T18:06:48Z",
+          "completed_at": "2026-10-11T18:06:48Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-11T18:06:48Z",
+          "completed_at": "2026-10-11T18:06:48Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/check-runs/114537970741",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000279,
+      "runner_name": "GitHub Actions 1000000279",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 114537970746,
+      "run_id": 38162383246,
+      "workflow_name": "RECHECK-2 config input",
+      "head_branch": "test/recheck-2-config",
+      "run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/runs/38162383246",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOTBI_1s8AAAAaqv68Og",
+      "head_sha": "363a6680fbd29d977514bdcc97c9978aeeea13da",
+      "url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/jobs/114537970746",
+      "html_url": "https://github.com/XtReL/devsecops-gatekeeper/actions/runs/38162383246/job/114537970746",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-11T18:06:42Z",
+      "started_at": "2026-10-11T18:06:44Z",
+      "completed_at": "2026-10-11T18:06:52Z",
+      "name": "target, config empty string",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-11T18:06:44Z",
+          "completed_at": "2026-10-11T18:06:46Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-11T18:06:46Z",
+          "completed_at": "2026-10-11T18:06:47Z"
+        },
+        {
+          "name": "Download binary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-11T18:06:47Z",
+          "completed_at": "2026-10-11T18:06:49Z"
+        },
+        {
+          "name": "Resolve evidence target",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-11T18:06:49Z",
+          "completed_at": "2026-10-11T18:06:50Z"
+        },
+        {
+          "name": "Check outputs (epoch 1)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-11T18:06:50Z",
+          "completed_at": "2026-10-11T18:06:50Z"
+        },
+        {
+          "name": "Post Resolve evidence target",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-11T18:06:50Z",
+          "completed_at": "2026-10-11T18:06:50Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-11T18:06:50Z",
+          "completed_at": "2026-10-11T18:06:50Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-11T18:06:50Z",
+          "completed_at": "2026-10-11T18:06:50Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/check-runs/114537970746",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000280,
+      "runner_name": "GitHub Actions 1000000280",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 114537970753,
+      "run_id": 38162383246,
+      "workflow_name": "RECHECK-2 config input",
+      "head_branch": "test/recheck-2-config",
+      "run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/runs/38162383246",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOTBI_1s8AAAAaqv68QQ",
+      "head_sha": "363a6680fbd29d977514bdcc97c9978aeeea13da",
+      "url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/jobs/114537970753",
+      "html_url": "https://github.com/XtReL/devsecops-gatekeeper/actions/runs/38162383246/job/114537970753",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-11T18:06:42Z",
+      "started_at": "2026-10-11T18:06:43Z",
+      "completed_at": "2026-10-11T18:06:51Z",
+      "name": "target, config on committed epoch-2 file",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-11T18:06:44Z",
+          "completed_at": "2026-10-11T18:06:46Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-11T18:06:46Z",
+          "completed_at": "2026-10-11T18:06:47Z"
+        },
+        {
+          "name": "Download binary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-11T18:06:47Z",
+          "completed_at": "2026-10-11T18:06:48Z"
+        },
+        {
+          "name": "Resolve evidence target",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-11T18:06:48Z",
+          "completed_at": "2026-10-11T18:06:49Z"
+        },
+        {
+          "name": "Check outputs (epoch 2)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-11T18:06:49Z",
+          "completed_at": "2026-10-11T18:06:49Z"
+        },
+        {
+          "name": "Post Resolve evidence target",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-11T18:06:49Z",
+          "completed_at": "2026-10-11T18:06:49Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-11T18:06:49Z",
+          "completed_at": "2026-10-11T18:06:49Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-11T18:06:49Z",
+          "completed_at": "2026-10-11T18:06:49Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/check-runs/114537970753",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000281,
+      "runner_name": "GitHub Actions 1000000281",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 114537970806,
+      "run_id": 38162383246,
+      "workflow_name": "RECHECK-2 config input",
+      "head_branch": "test/recheck-2-config",
+      "run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/runs/38162383246",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOTBI_1s8AAAAaqv68dg",
+      "head_sha": "363a6680fbd29d977514bdcc97c9978aeeea13da",
+      "url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/actions/jobs/114537970806",
+      "html_url": "https://github.com/XtReL/devsecops-gatekeeper/actions/runs/38162383246/job/114537970806",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-11T18:06:42Z",
+      "started_at": "2026-10-11T18:06:44Z",
+      "completed_at": "2026-10-11T18:06:56Z",
+      "name": "target, config not set",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-11T18:06:45Z",
+          "completed_at": "2026-10-11T18:06:48Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-11T18:06:48Z",
+          "completed_at": "2026-10-11T18:06:51Z"
+        },
+        {
+          "name": "Download binary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-11T18:06:51Z",
+          "completed_at": "2026-10-11T18:06:52Z"
+        },
+        {
+          "name": "Resolve evidence target",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-11T18:06:52Z",
+          "completed_at": "2026-10-11T18:06:54Z"
+        },
+        {
+          "name": "Check outputs (epoch 1)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-11T18:06:54Z",
+          "completed_at": "2026-10-11T18:06:54Z"
+        },
+        {
+          "name": "Post Resolve evidence target",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-11T18:06:54Z",
+          "completed_at": "2026-10-11T18:06:54Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-11T18:06:54Z",
+          "completed_at": "2026-10-11T18:06:54Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-11T18:06:54Z",
+          "completed_at": "2026-10-11T18:06:54Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/XtReL/devsecops-gatekeeper/check-runs/114537970806",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000282,
+      "runner_name": "GitHub Actions 1000000282",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+--- FAIL: TestRunEvidenceTargetStrictConfig (0.01s)
+    main_test.go:328: trailing object: expected exit code 2, got 0
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.319s
+--- FAIL: TestLoadConfigRejectsTrailingData (0.01s)
+    --- FAIL: TestLoadConfigRejectsTrailingData/second_object (0.00s)
+        evidence_test.go:612: expected an error for trailing data, got epoch 2
+    --- FAIL: TestLoadConfigRejectsTrailingData/stray_text (0.00s)
+        evidence_test.go:612: expected an error for trailing data, got epoch 2
+    --- FAIL: TestLoadConfigRejectsTrailingData/second_value (0.00s)
+        evidence_test.go:612: expected an error for trailing data, got epoch 2
+FAIL
+FAIL	devsecops-gatekeeper/internal/evidence	0.930s
+FAIL

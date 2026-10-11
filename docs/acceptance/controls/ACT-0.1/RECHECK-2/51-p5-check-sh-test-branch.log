@@ -1,0 +1,249 @@
+# date-utc: 2026-10-11T18:05:32Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb
+# cmd: scripts/check.sh
+# ----
+check: gofmt -l .
+check: go vet ./...
+check: go test -race -timeout 30s ./...
+?   	devsecops-gatekeeper/cmd/api	[no test files]
+ok  	devsecops-gatekeeper/cmd/gatekeeper	2.633s
+?   	devsecops-gatekeeper/cmd/scanner	[no test files]
+?   	devsecops-gatekeeper/internal/auth	[no test files]
+?   	devsecops-gatekeeper/internal/authz	[no test files]
+?   	devsecops-gatekeeper/internal/billing	[no test files]
+?   	devsecops-gatekeeper/internal/broker	[no test files]
+?   	devsecops-gatekeeper/internal/cache	[no test files]
+?   	devsecops-gatekeeper/internal/config	[no test files]
+?   	devsecops-gatekeeper/internal/db	[no test files]
+ok  	devsecops-gatekeeper/internal/engine	2.380s
+ok  	devsecops-gatekeeper/internal/evidence	2.010s
+?   	devsecops-gatekeeper/internal/github	[no test files]
+?   	devsecops-gatekeeper/internal/handler	[no test files]
+?   	devsecops-gatekeeper/internal/iam	[no test files]
+ok  	devsecops-gatekeeper/internal/middleware	1.024s
+?   	devsecops-gatekeeper/internal/scanner	[no test files]
+check: verify production compilation
+check: gosec v2.29.0 -exclude=G104,G108 ./...
+go: github.com/securego/gosec/v2@v2.29.0 requires go >= 1.25.0; switching to go1.26.9
+[gosec] 2026/10/11 18:05:39 Including rules: default
+[gosec] 2026/10/11 18:05:39 Excluding rules: G104,G108
+[gosec] 2026/10/11 18:05:39 Including analyzers: default
+[gosec] 2026/10/11 18:05:39 Excluding analyzers: G104,G108
+[gosec] 2026/10/11 18:05:39 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/auth
+[gosec] 2026/10/11 18:05:39 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/cmd/api
+[gosec] 2026/10/11 18:05:39 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/handler
+[gosec] 2026/10/11 18:05:39 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/cache
+[gosec] 2026/10/11 18:05:39 Checking package: handler
+[gosec] 2026/10/11 18:05:39 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/handler/webhook.go
+[gosec] 2026/10/11 18:05:39 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/db
+[gosec] 2026/10/11 18:05:39 Checking package: auth
+[gosec] 2026/10/11 18:05:39 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/auth/github.go
+[gosec] 2026/10/11 18:05:39 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/github
+[gosec] 2026/10/11 18:05:39 Checking package: cache
+[gosec] 2026/10/11 18:05:39 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/cache/token.go
+[gosec] 2026/10/11 18:05:39 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/iam
+[gosec] 2026/10/11 18:05:40 Checking package: db
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/db/database.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/cmd/gatekeeper
+[gosec] 2026/10/11 18:05:40 Checking package: github
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/github/client.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/authz
+[gosec] 2026/10/11 18:05:40 Checking package: main
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/cmd/api/main.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/config
+[gosec] 2026/10/11 18:05:40 Checking package: iam
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/iam/spicedb.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/middleware
+[gosec] 2026/10/11 18:05:40 Checking package: config
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/config/config.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/scanner
+[gosec] 2026/10/11 18:05:40 Checking package: main
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/cmd/gatekeeper/main.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/cmd/scanner
+[gosec] 2026/10/11 18:05:40 Checking package: scanner
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/scanner/regex.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/billing
+[gosec] 2026/10/11 18:05:40 Checking package: authz
+[gosec] 2026/10/11 18:05:40 Checking package: middleware
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/middleware/hmac.go
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/middleware/signature.go
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/authz/spicedb.go
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/middleware/webhook.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/broker
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/engine
+[gosec] 2026/10/11 18:05:40 Checking package: broker
+[gosec] 2026/10/11 18:05:40 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/broker/nats.go
+[gosec] 2026/10/11 18:05:40 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/evidence
+[gosec] 2026/10/11 18:05:41 Checking package: main
+[gosec] 2026/10/11 18:05:41 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/cmd/scanner/main.go
+[gosec] 2026/10/11 18:05:41 Checking package: billing
+[gosec] 2026/10/11 18:05:41 Import directory: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/scripts
+[gosec] 2026/10/11 18:05:41 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/billing/subscription.go
+[gosec] 2026/10/11 18:05:41 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/billing/webhook.go
+[gosec] 2026/10/11 18:05:41 Checking package: engine
+[gosec] 2026/10/11 18:05:41 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/engine/engine.go
+[gosec] 2026/10/11 18:05:41 Checking package: evidence
+[gosec] 2026/10/11 18:05:41 Checking file: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb/internal/evidence/evidence.go
+Results:
+
+
+[1;36mSummary:[0m
+  Gosec  : dev
+  Files  : 20
+  Lines  : 2691
+  Nosec  : 14
+  Issues : [1;32m0[0m
+
+check: scripts/lint-workflows.sh
+check: self-scan (go run ./cmd/gatekeeper scan --source .)
+check: verify gitleaks version is embedded in scan result
+check: scripts/evidence-push_test.sh
+warning: You appear to have cloned an empty repository.
+initialised evidence log github.com/octo/evidence-selftest/gatekeeper-evidence/v1 at /tmp/tmp.G38lOwMBr5/init-clone
+== evidence-push_test: first record ==
+evidence-push: attempt 1/5
+From /tmp/tmp.G38lOwMBr5/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 3e8765a init
+[gatekeeper-evidence 7c295d6] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000000.json
+To /tmp/tmp.G38lOwMBr5/origin.git
+   3e8765a..7c295d6  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: duplicate of the same run (no new entry) ==
+evidence-push: attempt 1/5
+From /tmp/tmp.G38lOwMBr5/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 7c295d6 evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+gatekeeper record: run 1001/1 already recorded
+evidence-push: run 1001/1 was already recorded
+== evidence-push_test: second, different run ==
+evidence-push: attempt 1/5
+From /tmp/tmp.G38lOwMBr5/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 7c295d6 evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+[gatekeeper-evidence 5eef0d5] evidence: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb run 1002/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000001.json
+To /tmp/tmp.G38lOwMBr5/origin.git
+   7c295d6..5eef0d5  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: concurrent writer race ==
+evidence-push: attempt 1/5
+From /tmp/tmp.G38lOwMBr5/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 5eef0d5 evidence: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb run 1002/1
+[gatekeeper-evidence 65fe5dc] evidence: cccccccccccccccccccccccccccccccccccccccc run 2001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000002.json
+To /tmp/tmp.G38lOwMBr5/origin.git
+   5eef0d5..65fe5dc  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+evidence-push: attempt 1/5
+From /tmp/tmp.G38lOwMBr5/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+   5eef0d5..65fe5dc  gatekeeper-evidence -> origin/gatekeeper-evidence
+HEAD is now at 65fe5dc evidence: cccccccccccccccccccccccccccccccccccccccc run 2001/1
+[gatekeeper-evidence 28219fd] evidence: dddddddddddddddddddddddddddddddddddddddd run 2002/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000003.json
+To /tmp/tmp.G38lOwMBr5/origin.git
+   65fe5dc..28219fd  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: verify ==
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1
+size:      4
+root:      UaaChWSE2A7jSnWUb7vh25HQnhGjcK6wD/3+o2AK4Yc=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== evidence-push_test: clone with core.autocrlf=true still verifies ==
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1
+size:      4
+root:      UaaChWSE2A7jSnWUb7vh25HQnhGjcK6wD/3+o2AK4Yc=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== evidence-push_test: custom config reaches record (epoch 2) ==
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+initialised evidence log github.com/octo/evidence-selftest/gatekeeper-evidence/v1/e2 at /tmp/tmp.G38lOwMBr5/e2-init
+evidence-push: attempt 1/5
+From /tmp/tmp.G38lOwMBr5/origin
+ * branch            gatekeeper-evidence-e2 -> FETCH_HEAD
+HEAD is now at ced8648 init-e2
+[gatekeeper-evidence-e2 a7af3ac] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 3001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000000.json
+To /tmp/tmp.G38lOwMBr5/origin.git
+   ced8648..a7af3ac  HEAD -> gatekeeper-evidence-e2
+evidence-push: pushed
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1/e2
+size:      1
+root:      +M2TNQlDOGTB6u+64fJmXNnUx7MgwsgTTTOjWZuVxTg=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+evidence-push_test: OK
+check: scripts/rotation_test.sh
+== rotation_test: epoch 1 ==
+warning: You appear to have cloned an empty repository.
+initialised evidence log github.com/octo/rotation-selftest/gatekeeper-evidence/v1 at /tmp/tmp.unu0C4rNiP/init-clone
+evidence-push: attempt 1/5
+From /tmp/tmp.unu0C4rNiP/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 2289f7b init
+[gatekeeper-evidence 127791e] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000000.json
+To /tmp/tmp.unu0C4rNiP/origin.git
+   2289f7b..127791e  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+evidence-push: attempt 1/5
+From /tmp/tmp.unu0C4rNiP/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 127791e evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+[gatekeeper-evidence 4ac3300] evidence: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb run 1002/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000001.json
+To /tmp/tmp.unu0C4rNiP/origin.git
+   127791e..4ac3300  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== rotation_test: epoch 1 clone with core.autocrlf=true still verifies ==
+log:       github.com/octo/rotation-selftest/gatekeeper-evidence/v1
+size:      2
+root:      VXTXy9Ze2RJ3gt/eY/LfnO6Ou7Xho7gc+sv1WpgRfWw=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== rotation_test: planned rotation to epoch 2 ==
+rotation: planned
+epoch:    2
+origin:   github.com/octo/rotation-selftest/gatekeeper-evidence/v1/e2
+key id:   [redacted by acceptance: hex, length 64, entropy 3.78]
+vkey:     github.com/octo/rotation-selftest/gatekeeper-evidence/v1/e2+94045202+AQ0mYVAE7J7fe0WcaqseWtQXkR2Tp59fnyuNZqkHHnzH
+frozen:   github.com/octo/rotation-selftest/gatekeeper-evidence/v1 at size 2
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+evidence-push: attempt 1/5
+From /tmp/tmp.unu0C4rNiP/origin
+ * branch            gatekeeper-evidence-e2 -> FETCH_HEAD
+HEAD is now at 786b348 rotate: epoch 2 genesis
+[gatekeeper-evidence-e2 7eb551d] evidence: cccccccccccccccccccccccccccccccccccccccc run 2001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000001.json
+To /tmp/tmp.unu0C4rNiP/origin.git
+   786b348..7eb551d  HEAD -> gatekeeper-evidence-e2
+evidence-push: pushed
+epoch 1:  github.com/octo/rotation-selftest/gatekeeper-evidence/v1  size 2  root VXTXy9Ze2RJ3gt/eY/LfnO6Ou7Xho7gc+sv1WpgRfWw=  frozen  ok
+epoch 2:  github.com/octo/rotation-selftest/gatekeeper-evidence/v1/e2  size 2  root pp+ZUhA5EDzPb3FUUq3LBhDHbBpwbpzVSeYwsSSypyI=  (planned rotation)  ok
+OK: every epoch verified and linked by its genesis
+== rotation_test: epoch 2 clone with core.autocrlf=true still verifies ==
+log:       github.com/octo/rotation-selftest/gatekeeper-evidence/v1/e2
+size:      2
+root:      pp+ZUhA5EDzPb3FUUq3LBhDHbBpwbpzVSeYwsSSypyI=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== rotation_test: unplanned rotation to epoch 2 ==
+rotation: unplanned
+epoch:    2
+origin:   github.com/octo/rotation-selftest/gatekeeper-evidence/v1/e2
+key id:   [redacted by acceptance: hex, length 64, entropy 3.88]
+vkey:     github.com/octo/rotation-selftest/gatekeeper-evidence/v1/e2+7605c68a+AQgLoEyX+X37kU3kGoUnTuQ4VCyk6QweYYieRGfwZljd
+frozen:   github.com/octo/rotation-selftest/gatekeeper-evidence/v1 at size 2
+verifiers must confirm this key id with you out of band and set acceptUnplanned
+rotation_test: OK
+check: OK
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:05:44Z

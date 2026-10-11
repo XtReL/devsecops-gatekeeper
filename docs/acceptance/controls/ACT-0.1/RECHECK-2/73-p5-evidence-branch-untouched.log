@@ -1,0 +1,16 @@
+# date-utc: 2026-10-11T18:10:02Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: echo "local remote-tracking ref (fetched before item 5, 17:5x UTC):"; git rev-parse refs/remotes/origin/gatekeeper-evidence; git log -1 --format="%H %cI %s" refs/remotes/origin/gatekeeper-evidence; echo "remote now (git ls-remote):"; git ls-remote origin refs/heads/gatekeeper-evidence refs/heads/test/recheck-2-config refs/heads/fix/act-0.1; echo "API branch:"; curl -sS https://api.github.com/repos/XtReL/devsecops-gatekeeper/branches/gatekeeper-evidence | python3 -I -c "import sys,json; d=json.load(sys.stdin); print(d[\"name\"], d[\"commit\"][\"sha\"], d[\"commit\"][\"commit\"][\"committer\"][\"date\"])"
+# ----
+local remote-tracking ref (fetched before item 5, 17:5x UTC):
+2eb3ddc9574b9bb7a1c5c6c249a4c225032c9228
+2eb3ddc9574b9bb7a1c5c6c249a4c225032c9228 2026-09-28T17:26:42+00:00 evidence: 7e2f7b63fa71b4a9f3cb2a8c471a52119d7273f5 run 36458075847/1
+remote now (git ls-remote):
+ba73ba0b78ec91a4ac66bdd9ec9956ea8eee87c0	refs/heads/fix/act-0.1
+2eb3ddc9574b9bb7a1c5c6c249a4c225032c9228	refs/heads/gatekeeper-evidence
+363a6680fbd29d977514bdcc97c9978aeeea13da	refs/heads/test/recheck-2-config
+API branch:
+gatekeeper-evidence 2eb3ddc9574b9bb7a1c5c6c249a4c225032c9228 2026-09-28T17:26:42Z
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:10:03Z

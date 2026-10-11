@@ -1,0 +1,11 @@
+--- FAIL: TestActionTargetStepConfigInput (0.04s)
+    --- FAIL: TestActionTargetStepConfigInput/config_set,_file_missing:_error (0.01s)
+        config_test.go:243: want a non-zero exit, got 0 (output "branch=gatekeeper-evidence\norigin=github.com/o/r/gatekeeper-evidence/v1\n")
+    --- FAIL: TestActionTargetStepConfigInput/default_path_set_explicitly,_file_missing:_error (0.01s)
+        config_test.go:248: want a non-zero exit, got 0 (output "branch=gatekeeper-evidence\norigin=github.com/o/r/gatekeeper-evidence/v1\n")
+    --- FAIL: TestActionTargetStepConfigInput/config_set,_file_present:_used (0.01s)
+        config_test.go:256: want exit 0 and epoch 2, got exit 0, output "branch=gatekeeper-evidence\norigin=github.com/o/r/gatekeeper-evidence/v1\n"
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.288s
+ok  	devsecops-gatekeeper/internal/evidence	0.876s
+FAIL

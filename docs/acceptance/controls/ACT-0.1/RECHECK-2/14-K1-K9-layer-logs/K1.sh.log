@@ -1,0 +1,72 @@
+warning: You appear to have cloned an empty repository.
+initialised evidence log github.com/octo/evidence-selftest/gatekeeper-evidence/v1 at /tmp/tmp.jvLBMU3350/init-clone
+== evidence-push_test: first record ==
+evidence-push: attempt 1/5
+From /tmp/tmp.jvLBMU3350/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at bec8f77 init
+[gatekeeper-evidence 95cdb8f] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000000.json
+To /tmp/tmp.jvLBMU3350/origin.git
+   bec8f77..95cdb8f  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: duplicate of the same run (no new entry) ==
+evidence-push: attempt 1/5
+From /tmp/tmp.jvLBMU3350/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 95cdb8f evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+gatekeeper record: run 1001/1 already recorded
+evidence-push: run 1001/1 was already recorded
+== evidence-push_test: second, different run ==
+evidence-push: attempt 1/5
+From /tmp/tmp.jvLBMU3350/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 95cdb8f evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1001/1
+[gatekeeper-evidence 16be8ef] evidence: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb run 1002/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000001.json
+To /tmp/tmp.jvLBMU3350/origin.git
+   95cdb8f..16be8ef  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: concurrent writer race ==
+evidence-push: attempt 1/5
+From /tmp/tmp.jvLBMU3350/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+HEAD is now at 16be8ef evidence: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb run 1002/1
+[gatekeeper-evidence 38a91b7] evidence: cccccccccccccccccccccccccccccccccccccccc run 2001/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000002.json
+To /tmp/tmp.jvLBMU3350/origin.git
+   16be8ef..38a91b7  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+evidence-push: attempt 1/5
+From /tmp/tmp.jvLBMU3350/origin
+ * branch            gatekeeper-evidence -> FETCH_HEAD
+   16be8ef..38a91b7  gatekeeper-evidence -> origin/gatekeeper-evidence
+HEAD is now at 38a91b7 evidence: cccccccccccccccccccccccccccccccccccccccc run 2001/1
+[gatekeeper-evidence 8a316fe] evidence: dddddddddddddddddddddddddddddddddddddddd run 2002/1
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 entries/00000000000000000003.json
+To /tmp/tmp.jvLBMU3350/origin.git
+   38a91b7..8a316fe  HEAD -> gatekeeper-evidence
+evidence-push: pushed
+== evidence-push_test: verify ==
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1
+size:      4
+root:      H7ebJGwDkqEkbXcmvrSwDC5G0awK9jrRmSBxm/sn6HY=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== evidence-push_test: clone with core.autocrlf=true still verifies ==
+log:       github.com/octo/evidence-selftest/gatekeeper-evidence/v1
+size:      4
+root:      H7ebJGwDkqEkbXcmvrSwDC5G0awK9jrRmSBxm/sn6HY=
+OK: checkpoint signature, Merkle root and all entry signatures verified
+== evidence-push_test: custom config reaches record (epoch 2) ==
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+initialised evidence log github.com/octo/evidence-selftest/gatekeeper-evidence/v1/e2 at /tmp/tmp.jvLBMU3350/e2-init
+evidence-push: attempt 1/5
+From /tmp/tmp.jvLBMU3350/origin
+ * branch            gatekeeper-evidence-e2 -> FETCH_HEAD
+HEAD is now at c3b059f init-e2
+gatekeeper record: evidence: open log: filelog: current checkpoint does not verify under this log key: tlog: note has no valid signature from the expected key
+evidence-push: gatekeeper record exited 2, not retrying

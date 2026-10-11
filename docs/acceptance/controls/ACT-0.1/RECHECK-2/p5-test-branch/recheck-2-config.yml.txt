@@ -1,0 +1,230 @@
+name: RECHECK-2 config input
+
+# ACT-0.1-RECHECK-2, item 5: the action from this very commit (uses: ./) in
+# mode build, then mode target with four values of the config input.
+# Expectations: test/recheck-2/EXPECTATIONS.md (written before the first run).
+# Only a push to this test branch triggers it. No secrets, no scan, no
+# record, nothing is written to any evidence branch.
+on:
+  push:
+    branches: [test/recheck-2-config]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build gatekeeper
+        id: build
+        uses: ./
+        with:
+          mode: build
+
+      - name: Check build output
+        env:
+          BIN: ${{ steps.build.outputs.gatekeeper }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
+            echo "::error::mode build: no executable gatekeeper output ('$BIN')"
+            exit 1
+          fi
+          echo "gatekeeper=$BIN"
+          "$BIN" version || true
+
+      - name: Upload binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: recheck-2-gatekeeper
+          path: ${{ steps.build.outputs.gatekeeper }}
+
+  target-unset:
+    name: target, config not set
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: recheck-2-gatekeeper
+          path: ${{ runner.temp }}
+
+      - name: Resolve evidence target
+        id: target
+        uses: ./
+        with:
+          mode: target
+          gatekeeper: ${{ runner.temp }}/gatekeeper
+
+      - name: Check outputs (epoch 1)
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "branch=$BRANCH"
+          echo "origin=$ORIGIN"
+          if [ "$BRANCH" != "gatekeeper-evidence" ]; then
+            echo "::error::RECHECK-2 target-unset: expected branch 'gatekeeper-evidence', got '$BRANCH'"
+            exit 1
+          fi
+          if [ "$ORIGIN" != "github.com/$REPO/gatekeeper-evidence/v1" ]; then
+            echo "::error::RECHECK-2 target-unset: expected origin 'github.com/$REPO/gatekeeper-evidence/v1', got '$ORIGIN'"
+            exit 1
+          fi
+          echo "RECHECK-2 target-unset: ASSERT OK"
+
+  target-empty:
+    name: target, config empty string
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: recheck-2-gatekeeper
+          path: ${{ runner.temp }}
+
+      - name: Resolve evidence target
+        id: target
+        uses: ./
+        with:
+          mode: target
+          gatekeeper: ${{ runner.temp }}/gatekeeper
+          config: ''
+
+      - name: Check outputs (epoch 1)
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "branch=$BRANCH"
+          echo "origin=$ORIGIN"
+          if [ "$BRANCH" != "gatekeeper-evidence" ]; then
+            echo "::error::RECHECK-2 target-empty: expected branch 'gatekeeper-evidence', got '$BRANCH'"
+            exit 1
+          fi
+          if [ "$ORIGIN" != "github.com/$REPO/gatekeeper-evidence/v1" ]; then
+            echo "::error::RECHECK-2 target-empty: expected origin 'github.com/$REPO/gatekeeper-evidence/v1', got '$ORIGIN'"
+            exit 1
+          fi
+          echo "RECHECK-2 target-empty: ASSERT OK"
+
+  target-epoch2:
+    name: target, config on committed epoch-2 file
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: recheck-2-gatekeeper
+          path: ${{ runner.temp }}
+
+      - name: Resolve evidence target
+        id: target
+        uses: ./
+        with:
+          mode: target
+          gatekeeper: ${{ runner.temp }}/gatekeeper
+          config: test/recheck-2/epoch2.json
+
+      - name: Check outputs (epoch 2)
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "branch=$BRANCH"
+          echo "origin=$ORIGIN"
+          if [ "$BRANCH" != "gatekeeper-evidence-e2" ]; then
+            echo "::error::RECHECK-2 target-epoch2: expected branch 'gatekeeper-evidence-e2', got '$BRANCH'"
+            exit 1
+          fi
+          if [ "$ORIGIN" != "github.com/$REPO/gatekeeper-evidence/v1/e2" ]; then
+            echo "::error::RECHECK-2 target-epoch2: expected origin 'github.com/$REPO/gatekeeper-evidence/v1/e2', got '$ORIGIN'"
+            exit 1
+          fi
+          echo "RECHECK-2 target-epoch2: ASSERT OK"
+
+  target-missing:
+    name: target, config on a missing path
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: recheck-2-gatekeeper
+          path: ${{ runner.temp }}
+
+      - name: Confirm the path is missing
+        run: |
+          set -euo pipefail
+          if [ -e test/recheck-2/does-not-exist.json ]; then
+            echo "::error::RECHECK-2 target-missing: test/recheck-2/does-not-exist.json exists, the case is void"
+            exit 1
+          fi
+
+      # Expected to fail: continue-on-error keeps the job going so the next
+      # step can require exactly that.
+      - name: Resolve evidence target (expected to fail)
+        id: target
+        continue-on-error: true
+        uses: ./
+        with:
+          mode: target
+          gatekeeper: ${{ runner.temp }}/gatekeeper
+          config: test/recheck-2/does-not-exist.json
+
+      - name: Check the step failed with no outputs
+        env:
+          OUTCOME: ${{ steps.target.outcome }}
+          BRANCH: ${{ steps.target.outputs.branch }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+        run: |
+          set -euo pipefail
+          echo "outcome=$OUTCOME"
+          echo "branch=$BRANCH"
+          echo "origin=$ORIGIN"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::RECHECK-2 target-missing: expected outcome 'failure', got '$OUTCOME'"
+            exit 1
+          fi
+          if [ -n "$BRANCH" ] || [ -n "$ORIGIN" ]; then
+            echo "::error::RECHECK-2 target-missing: expected empty outputs, got branch='$BRANCH' origin='$ORIGIN'"
+            exit 1
+          fi
+          echo "RECHECK-2 target-missing: ASSERT OK"

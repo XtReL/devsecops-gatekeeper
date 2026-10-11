@@ -1,0 +1,89 @@
+# date-utc: 2026-10-11T18:02:30Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: for spec in distribution.md:14 distribution.md:17 rotation.md:19 rotation.md:48 rotation.md:20 rotation.md:21; do f=${spec%%:*}; n=${spec##*:}; echo "== docs/tasks/$f:$n @ba73ba0"; git show ba73ba0:docs/tasks/$f | sed -n "${n}p"; done
+echo "== action.yml input config @ba73ba0 (python yaml):"; git show ba73ba0:action.yml | python3 -I -c "import sys,yaml; d=yaml.safe_load(sys.stdin); c=d[\"inputs\"][\"config\"]; print(repr(c.get(\"default\")), \"required=\", c.get(\"required\")); print(c[\"description\"])"
+echo "== action.yml target step run @ba73ba0:"; git show ba73ba0:action.yml | python3 -I -c "import sys,yaml; d=yaml.safe_load(sys.stdin); s=[s for s in d[\"runs\"][\"steps\"] if s.get(\"id\")==\"target\"][0]; print(s[\"env\"]); print(s[\"run\"])"
+echo "== LoadConfig @ba73ba0:"; git show ba73ba0:internal/evidence/evidence.go | sed -n "/^func LoadConfig/,/^}/p"
+echo "== main.go --config flags and checkConfigFlag @ba73ba0:"; git show ba73ba0:cmd/gatekeeper/main.go | grep -n -E "\"config\"|checkConfigFlag|is empty" 
+echo "== remaining mentions of config default in docs/tasks @ba73ba0:"; git grep -n -E "evidence\.json|--config|вход .config|эпоха 1" ba73ba0 -- docs/tasks
+# ----
+== docs/tasks/distribution.md:14 @ba73ba0
+- Прочие входы: `source` (по умолчанию `.`), `gatekeeper` (путь к бинарнику), `result` (путь к `result.json`), `evidence` (по умолчанию `evidence`), `config` (по умолчанию пусто: тогда берётся `.gatekeeper/evidence.json`, а при его отсутствии — эпоха 1; заданный путь обязан существовать, иначе ошибка, в том числе для `.gatekeeper/evidence.json`).
+== docs/tasks/distribution.md:17 @ba73ba0
+- **`target`:** `chmod +x`, `gatekeeper evidence-target --repo "$GITHUB_REPOSITORY"` (с `--config …` только если вход `config` задан) → выходы `branch`, `origin`.
+== docs/tasks/rotation.md:19 @ba73ba0
+## 3. CLI
+== docs/tasks/rotation.md:48 @ba73ba0
+- `LoadConfig`: путь не назван и файла по умолчанию нет → эпоха 1; названный путь без файла → ошибка; неизвестное поле, `epoch: 0`, мусор → ошибка.
+== docs/tasks/rotation.md:20 @ba73ba0
+- `gatekeeper evidence-target --repo OWNER/REPO [--config .gatekeeper/evidence.json]` печатает две строки `branch=…` и `origin=…` — формат, пригодный для `$GITHUB_OUTPUT`.
+== docs/tasks/rotation.md:21 @ba73ba0
+- `gatekeeper record`: новый флаг `--config` (по умолчанию `.gatekeeper/evidence.json`); `filelog.Open` — с origin из `Target`. Остальное поведение `record` не меняется.
+== action.yml input config @ba73ba0 (python yaml):
+'' required= False
+Path to the epoch config (mode: target, record). Leave empty to use .gatekeeper/evidence.json if it exists (no file means epoch 1). If set, the file must exist (an error, never epoch 1), even when the path is .gatekeeper/evidence.json.
+== action.yml target step run @ba73ba0:
+{'GATEKEEPER_BIN': '${{ inputs.gatekeeper }}', 'REPO': '${{ github.repository }}', 'CONFIG': '${{ inputs.config }}'}
+# --config only when the input is set: an explicit config must exist,
+# an omitted one falls back to .gatekeeper/evidence.json / epoch 1.
+config_args=()
+if [ -n "$CONFIG" ]; then
+  config_args=(--config "$CONFIG")
+fi
+"$GATEKEEPER_BIN" evidence-target --repo "$REPO" ${config_args[@]+"${config_args[@]}"} >> "$GITHUB_OUTPUT"
+
+== LoadConfig @ba73ba0:
+func LoadConfig(path string) (Config, error) {
+	implicit := path == ""
+	if implicit {
+		path = DefaultConfigPath
+	}
+	// #nosec G304 -- path is DefaultConfigPath or the operator's own --config flag.
+	data, err := os.ReadFile(path)
+	if implicit && errors.Is(err, os.ErrNotExist) {
+		return Config{Epoch: 1}, nil
+	}
+	if err != nil {
+		return Config{}, fmt.Errorf("evidence: read config %s: %w", path, err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	var cfg Config
+	if err := dec.Decode(&cfg); err != nil {
+		return Config{}, fmt.Errorf("evidence: parse config %s: %w", path, err)
+	}
+	// Decode stops after the first value; anything but end of input after
+	// it (a second object, stray text) must not be silently ignored.
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return Config{}, fmt.Errorf("evidence: parse config %s: unexpected data after the JSON object", path)
+	}
+	if cfg.Epoch < 1 {
+		return Config{}, fmt.Errorf("evidence: config %s: epoch must be >= 1, got %d", path, cfg.Epoch)
+	}
+	return cfg, nil
+}
+== main.go --config flags and checkConfigFlag @ba73ba0:
+140:// checkConfigFlag rejects an explicit empty --config: LoadConfig treats ""
+143:func checkConfigFlag(fs *flag.FlagSet, value string) error {
+146:		if f.Name == "config" {
+151:		return errors.New("--config is empty (omit the flag to use " + evidence.DefaultConfigPath + ")")
+162:	config := fs.String("config", "", "path to the epoch config (default "+evidence.DefaultConfigPath+")")
+170:	if err := checkConfigFlag(fs, *config); err != nil {
+196:	config := fs.String("config", "", "path to the epoch config (default "+evidence.DefaultConfigPath+")")
+200:	if err := checkConfigFlag(fs, *config); err != nil {
+== remaining mentions of config default in docs/tasks @ba73ba0:
+ba73ba0:docs/tasks/distribution.md:14:- Прочие входы: `source` (по умолчанию `.`), `gatekeeper` (путь к бинарнику), `result` (путь к `result.json`), `evidence` (по умолчанию `evidence`), `config` (по умолчанию пусто: тогда берётся `.gatekeeper/evidence.json`, а при его отсутствии — эпоха 1; заданный путь обязан существовать, иначе ошибка, в том числе для `.gatekeeper/evidence.json`).
+ba73ba0:docs/tasks/distribution.md:17:- **`target`:** `chmod +x`, `gatekeeper evidence-target --repo "$GITHUB_REPOSITORY"` (с `--config …` только если вход `config` задан) → выходы `branch`, `origin`.
+ba73ba0:docs/tasks/distribution.md:33:- `docs/onboarding.md`: ключ на устройстве владельца, environment `gatekeeper-evidence` (развёртывание только из ветки по умолчанию), `gh secret set` из stdin, `gatekeeper evidence-init` и сиротская ветка, ruleset для веток журнала, шаблон workflow, `.gatekeeper/evidence.json`, первая проверка `trustcore verify` и `.gatekeeper/evidence.pub`.
+ba73ba0:docs/tasks/rotation.md:12:- Файл `.gatekeeper/evidence.json` в ветке по умолчанию: `{"epoch": 1}`. Больше полей нет: ветка и origin **выводятся** из номера эпохи, дублей быть не должно.
+ba73ba0:docs/tasks/rotation.md:13:- Файла нет → эпоха 1 (обратная совместимость), но только если конфиг не назван (нет флага `--config`, не задан вход `config` action): тогда читается `.gatekeeper/evidence.json`. Названный путь обязан существовать, иначе ошибка, в том числе для `.gatekeeper/evidence.json` (ACT-0.1, C23).
+ba73ba0:docs/tasks/rotation.md:15:  - origin = `event.EpochOrigin(evidence.Origin(repo), epoch)`: эпоха 1 → `github.com/OWNER/REPO/gatekeeper-evidence/v1`, эпоха k ≥ 2 → `…/v1/e<k>`;
+ba73ba0:docs/tasks/rotation.md:20:- `gatekeeper evidence-target --repo OWNER/REPO [--config .gatekeeper/evidence.json]` печатает две строки `branch=…` и `origin=…` — формат, пригодный для `$GITHUB_OUTPUT`.
+ba73ba0:docs/tasks/rotation.md:21:- `gatekeeper record`: новый флаг `--config` (по умолчанию `.gatekeeper/evidence.json`); `filelog.Open` — с origin из `Target`. Остальное поведение `record` не меняется.
+ba73ba0:docs/tasks/rotation.md:33:- `docs/runbooks/key-rotation.md` — процедура по ADR 0002 для обоих видов ротации: команды `trustcore keygen`, `trustcore rotate`, создание сиротской ветки `gatekeeper-evidence-e<k>` из каталога новой эпохи, push, `gh secret set GATEKEEPER_SIGNING_KEY` из stdin, PR с `.gatekeeper/evidence.json` и `.gatekeeper/keys/e<k>.pub`, пример манифеста проверяющего и `trustcore verify-chain`. Отдельно для `unplanned`: доверенный чекпоинт, уведомление проверяющих вне журнала (новый origin, keyid, причина, дата; GitHub Security Advisory). Для `planned`: уничтожить старый приватный ключ после ротации.
+ba73ba0:docs/tasks/rotation.md:36:- `.gatekeeper/evidence.json` с `{"epoch": 1}` — добавить в этом же PR.
+ba73ba0:docs/tasks/rotation.md:40:1. эпоха 1: init, две записи через `evidence-push.sh`;
+ba73ba0:docs/tasks/rotation.md:48:- `LoadConfig`: путь не назван и файла по умолчанию нет → эпоха 1; названный путь без файла → ошибка; неизвестное поле, `epoch: 0`, мусор → ошибка.
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:02:31Z

@@ -1,0 +1,22 @@
+--- FAIL: TestActionTargetStepConfigInput (0.02s)
+    --- FAIL: TestActionTargetStepConfigInput/config_not_set,_no_file:_epoch_1 (0.00s)
+        config_test.go:227: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+    --- FAIL: TestActionTargetStepConfigInput/config_set,_file_missing:_error (0.00s)
+        config_test.go:227: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+    --- FAIL: TestActionTargetStepConfigInput/default_path_set_explicitly,_file_missing:_error (0.00s)
+        config_test.go:227: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+    --- FAIL: TestActionTargetStepConfigInput/config_set,_file_present:_used (0.01s)
+        config_test.go:227: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+--- FAIL: TestActionRecordStepConfigInput (0.03s)
+    --- FAIL: TestActionRecordStepConfigInput/config_not_set,_no_file:_epoch_1,_no_--config (0.01s)
+        config_test.go:277: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+    --- FAIL: TestActionRecordStepConfigInput/config_set,_file_missing:_error (0.01s)
+        config_test.go:277: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+    --- FAIL: TestActionRecordStepConfigInput/default_path_set_explicitly,_file_missing:_error (0.01s)
+        config_test.go:277: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+    --- FAIL: TestActionRecordStepConfigInput/config_set,_file_present:_passed_on (0.01s)
+        config_test.go:277: input config must default to the empty string (flag omitted), got ".gatekeeper/evidence.json"
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.426s
+ok  	devsecops-gatekeeper/internal/evidence	1.092s
+FAIL

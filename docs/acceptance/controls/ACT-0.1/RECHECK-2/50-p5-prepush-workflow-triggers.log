@@ -1,0 +1,35 @@
+# date-utc: 2026-10-11T18:05:25Z
+# cwd: /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb
+# cmd: git rev-parse HEAD; git status --porcelain; echo '--- python yaml analysis of all workflows in the test-branch tree:'; python3 -I /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/wfcheck.py /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/tb; echo '--- lint-workflows.sh:'; scripts/lint-workflows.sh && echo lint-workflows OK
+# ----
+ba73ba0b78ec91a4ac66bdd9ec9956ea8eee87c0
+?? .github/workflows/recheck-2-config.yml
+?? test/
+--- python yaml analysis of all workflows in the test-branch tree:
+== .github/workflows/ci.yml
+   on: {'push': {'branches': ['main', 'master']}, 'pull_request': {'branches': ['main', 'master']}}
+   job audit-and-lint | if: None | environment: None | permissions: None
+   job audit-and-lint references secrets.*
+   job test-and-build | if: None | environment: None | permissions: None
+== .github/workflows/gatekeeper.yml
+   on: {'pull_request': None, 'push': {'branches': ['main']}}
+   job scan | if: None | environment: None | permissions: None
+   job record | if: always() && (needs.scan.outputs.code == '0' || needs.scan.outputs.code == '1') && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) | environment: gatekeeper-evidence | permissions: {'contents': 'write'}
+   step with mode: record: Record evidence (job record)
+   job record references secrets.*
+   job action-selftest | if: None | environment: None | permissions: None
+   step with mode: record: Record via the action (mode=record) (job action-selftest)
+   job evidence-push-selftest | if: None | environment: None | permissions: None
+   job rotation-selftest | if: None | environment: None | permissions: None
+== .github/workflows/recheck-2-config.yml
+   on: {'push': {'branches': ['test/recheck-2-config']}}
+   job build | if: None | environment: None | permissions: None
+   job target-unset | if: None | environment: None | permissions: None
+   job target-empty | if: None | environment: None | permissions: None
+   job target-epoch2 | if: None | environment: None | permissions: None
+   job target-missing | if: None | environment: None | permissions: None
+--- lint-workflows.sh:
+lint-workflows OK
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:05:25Z

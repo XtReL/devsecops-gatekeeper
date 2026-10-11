@@ -1,0 +1,8 @@
+# date-utc: 2026-10-11T17:59:00Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: OUT=/tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/mutout bash /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-1-mutations/run-mutations.sh /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/ba73ba0 /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/ba73ba0/bin/trustcore K8
+# ----
+K8  GO=KILLED   SH=SURVIVED C24=SURVIVED C23=KILLED    record не отклоняет явный пустой --config
+# ----
+# exit: 0
+# end-utc: 2026-10-11T17:59:05Z

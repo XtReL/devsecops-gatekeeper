@@ -1,0 +1,10 @@
+initialised evidence log github.com/octo/r/gatekeeper-evidence/v1/e2 at /tmp/tmp.4sUCYvML83/init
+== case 1: config только по пути cfg/custom.json
+fatal: couldn't find remote ref gatekeeper-evidence
+evidence-push: fetch failed
+evidence-push: giving up after 5 attempts
+record step exit=1
+== case 2: тот же конфиг ещё и по пути по умолчанию
+evidence-push: pushed
+record step exit=0
+ASSERT FAIL: случай 1: код 1, ожидался 0 (режим fixed)

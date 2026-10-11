@@ -1,0 +1,7 @@
+--- FAIL: TestActionRecordStepConfigInput (0.07s)
+    --- FAIL: TestActionRecordStepConfigInput/config_set,_file_present:_passed_on (0.02s)
+        config_test.go:312: want exit 0, epoch-2 branch and EVIDENCE_CONFIG=cfg/custom.json, got exit 0, report "branch=gatekeeper-evidence-e2\nconfig=leaked-from-environment\n"
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.355s
+ok  	devsecops-gatekeeper/internal/evidence	0.982s
+FAIL

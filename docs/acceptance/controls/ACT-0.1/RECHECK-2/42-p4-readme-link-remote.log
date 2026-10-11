@@ -1,0 +1,23 @@
+# date-utc: 2026-10-11T18:03:48Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: U=https://github.com/XtReL/devsecops-gatekeeper/blob/71c92843c3a3482bf90f9cd00866a45fffc6c07d/docs/acceptance/ACT-0.1.md
+echo "== HTTP GET of the README link (follow redirects):"; curl -sS -L -o /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/link.html -w "http_code=%{http_code} final_url=%{url_effective} size=%{size_download}\n" "$U"
+echo "== page mentions file path / title:"; grep -o -m3 -E "ACT-0\.1\.md|ACT-0\.1[^<]{0,60}" /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/link.html | head -5
+echo "== raw content at that commit vs local blob:"; curl -sS -L https://raw.githubusercontent.com/XtReL/devsecops-gatekeeper/71c92843c3a3482bf90f9cd00866a45fffc6c07d/docs/acceptance/ACT-0.1.md | sha256sum; git show 71c92843c3a3482bf90f9cd00866a45fffc6c07d:docs/acceptance/ACT-0.1.md | sha256sum; git show origin/acceptance/act-v0:docs/acceptance/ACT-0.1.md | sha256sum
+echo "== API contents at ref:"; curl -sS "https://api.github.com/repos/XtReL/devsecops-gatekeeper/contents/docs/acceptance/ACT-0.1.md?ref=71c92843c3a3482bf90f9cd00866a45fffc6c07d" | python3 -I -c "import sys,json; d=json.load(sys.stdin); print(d[\"path\"], d[\"sha\"], d[\"size\"])"
+# ----
+== HTTP GET of the README link (follow redirects):
+http_code=200 final_url=https://github.com/XtReL/devsecops-gatekeeper/blob/71c92843c3a3482bf90f9cd00866a45fffc6c07d/docs/acceptance/ACT-0.1.md size=437057
+== page mentions file path / title:
+ACT-0.1.md at 71c92843c3a3482bf90f9cd00866a45fffc6c07d · XtReL/dev
+ACT-0.1.md at 71c92843c3a3482bf90f9cd00866a45fffc6c07d · XtReL/dev
+ACT-0.1.md" />
+== raw content at that commit vs local blob:
+6edb663c4aa4d68cad0e04fe8d0745104d31663df08a6850c2959ee8d61abe9f  -
+6edb663c4aa4d68cad0e04fe8d0745104d31663df08a6850c2959ee8d61abe9f  -
+6edb663c4aa4d68cad0e04fe8d0745104d31663df08a6850c2959ee8d61abe9f  -
+== API contents at ref:
+docs/acceptance/ACT-0.1.md 59f3eb90337d694b0f5052bc0cd0bcba7dff64fb 37423
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:03:50Z

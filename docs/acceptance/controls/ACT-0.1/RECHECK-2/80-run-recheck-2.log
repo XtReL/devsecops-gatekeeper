@@ -1,0 +1,18 @@
+# date-utc: 2026-10-11T18:10:52Z
+# cwd: /home/user/devsecops-gatekeeper
+# cmd: bash /home/user/devsecops-gatekeeper/docs/acceptance/controls/ACT-0.1/RECHECK-2/run-recheck-2.sh /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/fresh/ba73ba0 /tmp/claude-0/-home-user-devsecops-gatekeeper/a589096e-d479-506a-a9ff-ddea4a7a64b7/scratchpad/fresh/7e2f7b6
+# ----
+ok    П1 положительный: TestRunRecordRejectsEmptyConfigFlag на объекте PASS
+ok    П1: на K8 тест падает на утверждении config_test.go:141
+ok    П2: TestRunRecordAppliesCustomConfig падает на main_test.go:306 (причина does not verify)
+ok    П2: TestRecordRejectsMissingNamedConfig падает на evidence_test.go:664
+ok    П2 положительный: оба теста на объекте PASS
+ok    П5: p5-assert.sh по сохранённому прогону 38162383246
+ok    П6: C23 fixed на объекте: код 0
+ok    П6: C23 defect на объекте: код 1 (контроль умеет упасть)
+ok    П6: C24 fixed на объекте: код 0
+ok    П6: C24 defect на объекте: код 1 (контроль умеет упасть)
+run-recheck-2: OK
+# ----
+# exit: 0
+# end-utc: 2026-10-11T18:11:03Z

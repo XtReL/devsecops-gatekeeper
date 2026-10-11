@@ -1,0 +1,31 @@
+--- FAIL: TestEvidenceTargetConfigFlagSemantics (0.05s)
+    --- FAIL: TestEvidenceTargetConfigFlagSemantics/flag_passed,_file_missing (0.01s)
+        config_test.go:77: want exit 2, got 0 (stderr: )
+    --- FAIL: TestEvidenceTargetConfigFlagSemantics/default_path_passed_explicitly,_file_missing (0.01s)
+        config_test.go:77: want exit 2, got 0 (stderr: )
+--- FAIL: TestActionTargetStepConfigInput (0.06s)
+    --- FAIL: TestActionTargetStepConfigInput/config_set,_file_missing:_error (0.01s)
+        config_test.go:243: want a non-zero exit, got 0 (output "branch=gatekeeper-evidence\norigin=github.com/o/r/gatekeeper-evidence/v1\n")
+    --- FAIL: TestActionTargetStepConfigInput/default_path_set_explicitly,_file_missing:_error (0.02s)
+        config_test.go:248: want a non-zero exit, got 0 (output "branch=gatekeeper-evidence\norigin=github.com/o/r/gatekeeper-evidence/v1\n")
+--- FAIL: TestActionRecordStepConfigInput (0.08s)
+    --- FAIL: TestActionRecordStepConfigInput/config_set,_file_missing:_error (0.02s)
+        config_test.go:299: want a non-zero exit before evidence-push.sh runs, got exit 0, report "branch=gatekeeper-evidence\nconfig=cfg/missing.json\n"
+    --- FAIL: TestActionRecordStepConfigInput/default_path_set_explicitly,_file_missing:_error (0.02s)
+        config_test.go:304: want a non-zero exit before evidence-push.sh runs, got exit 0, report "branch=gatekeeper-evidence\nconfig=.gatekeeper/evidence.json\n"
+--- FAIL: TestRunRecordAppliesCustomConfig (0.08s)
+    main_test.go:306: record with a missing --config failed for the wrong reason (stderr: gatekeeper record: evidence: open log: filelog: current checkpoint does not verify under this log key: tlog: note has no valid signature from the expected key
+        )
+--- FAIL: TestRunEvidenceTargetStrictConfig (0.02s)
+    main_test.go:328: missing file: expected exit code 2, got 0
+FAIL
+FAIL	devsecops-gatekeeper/cmd/gatekeeper	1.331s
+--- FAIL: TestLoadConfigNamedPathMissingIsAnError (0.00s)
+    evidence_test.go:555: LoadConfig("/tmp/TestLoadConfigNamedPathMissingIsAnError99133164/002/does-not-exist.json"): expected an error for a missing named config, got epoch 1
+--- FAIL: TestLoadConfigExplicitDefaultPathMissingIsAnError (0.00s)
+    evidence_test.go:565: LoadConfig(".gatekeeper/evidence.json"): expected an error, got epoch 1
+--- FAIL: TestRecordRejectsMissingNamedConfig (0.01s)
+    evidence_test.go:664: Record succeeded with a missing named config (silent fallback to epoch 1)
+FAIL
+FAIL	devsecops-gatekeeper/internal/evidence	0.997s
+FAIL
