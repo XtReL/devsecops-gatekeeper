@@ -244,3 +244,80 @@ func TestRunRecordExitCodes(t *testing.T) {
 		t.Fatalf("record without signing key: expected exit code 2, got %d (stderr: %s)", code, stderr)
 	}
 }
+
+// ACT-0.1 C24: "record --config" must select the epoch (and so the log
+// origin) from the given file; without it record uses epoch 1 and fails on
+// an epoch-2 log. C23: a missing explicit config is an error, not epoch 1.
+func TestRunRecordAppliesCustomConfig(t *testing.T) {
+	keyDir := t.TempDir()
+	pemBytes, keyPath := genPEMKey(t, keyDir, "log.key")
+	evidenceDir := filepath.Join(t.TempDir(), "evidence")
+	repo := "XtReL/devsecops-gatekeeper"
+
+	if code, stderr := runGatekeeper(t, "evidence-init", "--evidence", evidenceDir, "--repo", repo, "--key", keyPath, "--epoch", "2"); code != 0 {
+		t.Fatalf("evidence-init --epoch 2: expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+
+	scanSource := t.TempDir()
+	if err := os.WriteFile(filepath.Join(scanSource, "readme.txt"), []byte("nothing to see here\n"), 0o644); err != nil {
+		t.Fatalf("write scan fixture: %v", err)
+	}
+	out := filepath.Join(t.TempDir(), "result.json")
+	if code, stderr := runGatekeeper(t, "scan", "--source", scanSource, "--out", out); code != 0 {
+		t.Fatalf("scan: expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+
+	configDir := t.TempDir()
+	customConfig := filepath.Join(configDir, "custom.json")
+	if err := os.WriteFile(customConfig, []byte("{\"epoch\": 2}\n"), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	env := []string{"GATEKEEPER_SIGNING_KEY=" + string(pemBytes)}
+	recordArgs := func(runID string, extra ...string) []string {
+		return append([]string{
+			"record",
+			"--result", out,
+			"--evidence", evidenceDir,
+			"--repo", repo,
+			"--commit", strings.Repeat("f", 40),
+			"--run-url", "https://github.com/" + repo + "/actions/runs/1",
+			"--run-id", runID,
+			"--run-attempt", "1",
+		}, extra...)
+	}
+
+	// The default config (none in the test's cwd) is epoch 1: wrong origin.
+	if code, _ := runGatekeeperEnv(t, env, recordArgs("9101")...); code != 2 {
+		t.Fatalf("record without --config on an epoch-2 log: expected exit code 2, got %d", code)
+	}
+	if code, stderr := runGatekeeperEnv(t, env, recordArgs("9102", "--config", customConfig)...); code != 0 {
+		t.Fatalf("record --config epoch 2: expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+	if code, _ := runGatekeeperEnv(t, env, recordArgs("9103", "--config", filepath.Join(configDir, "typo.json"))...); code != 2 {
+		t.Fatalf("record with a missing --config: expected exit code 2, got %d", code)
+	}
+}
+
+func TestRunEvidenceTargetStrictConfig(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, contents string) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+		return path
+	}
+
+	if code, stderr := runGatekeeper(t, "evidence-target", "--repo", "o/r", "--config", write("ok.json", `{"epoch": 2}`)); code != 0 {
+		t.Fatalf("valid config: expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+	for name, args := range map[string][]string{
+		"trailing object": {"--config", write("trail.json", `{"epoch":2}{"epoch":5}`)},
+		"missing file":    {"--config", filepath.Join(dir, "typo.json")},
+	} {
+		if code, _ := runGatekeeper(t, append([]string{"evidence-target", "--repo", "o/r"}, args...)...); code != 2 {
+			t.Fatalf("%s: expected exit code 2, got %d", name, code)
+		}
+	}
+}

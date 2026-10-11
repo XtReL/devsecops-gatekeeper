@@ -13,6 +13,10 @@
 #   GATEKEEPER_BIN, RESULT_FILE, EVIDENCE_DIR, EVIDENCE_BRANCH, REPO,
 #   COMMIT, RUN_URL, RUN_ID, RUN_ATTEMPT, GATEKEEPER_SIGNING_KEY (read by
 #   "gatekeeper record" itself; this script never touches it).
+# Optional environment:
+#   EVIDENCE_CONFIG — path to the epoch config, passed to "gatekeeper
+#   record" as --config (the action's config input). Unset or empty: record
+#   uses its own default, .gatekeeper/evidence.json.
 set -uo pipefail
 
 : "${GATEKEEPER_BIN:?GATEKEEPER_BIN is required}"
@@ -32,6 +36,11 @@ git -C "$EVIDENCE_DIR" config user.name "gatekeeper-evidence[bot]"
 git -C "$EVIDENCE_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
 max_attempts=5
+
+config_args=()
+if [ -n "${EVIDENCE_CONFIG:-}" ]; then
+  config_args=(--config "$EVIDENCE_CONFIG")
+fi
 
 publish_checkpoint_summary() {
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
@@ -58,7 +67,8 @@ for attempt in $(seq 1 "$max_attempts"); do
       --commit "$COMMIT" \
       --run-url "$RUN_URL" \
       --run-id "$RUN_ID" \
-      --run-attempt "$RUN_ATTEMPT"
+      --run-attempt "$RUN_ATTEMPT" \
+      ${config_args[@]+"${config_args[@]}"}
     record_code=$?
 
     if [ "$record_code" -eq 3 ]; then

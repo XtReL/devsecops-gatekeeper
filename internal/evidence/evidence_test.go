@@ -511,13 +511,34 @@ func TestRecordedEntryNeverContainsTestSecretValue(t *testing.T) {
 	}
 }
 
-func TestLoadConfigMissingFileDefaultsToEpochOne(t *testing.T) {
-	cfg, err := LoadConfig(filepath.Join(t.TempDir(), "does-not-exist.json"))
-	if err != nil {
-		t.Fatalf("LoadConfig: %v", err)
+// A missing file means epoch 1 only at DefaultConfigPath (repositories that
+// predate ADR 0002 have no config).
+func TestLoadConfigMissingDefaultFileDefaultsToEpochOne(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, path := range []string{"", DefaultConfigPath} {
+		cfg, err := LoadConfig(path)
+		if err != nil {
+			t.Fatalf("LoadConfig(%q): %v", path, err)
+		}
+		if cfg.Epoch != 1 {
+			t.Fatalf("LoadConfig(%q): expected epoch 1 for a missing default config, got %d", path, cfg.Epoch)
+		}
 	}
-	if cfg.Epoch != 1 {
-		t.Fatalf("expected epoch 1 for a missing config file, got %d", cfg.Epoch)
+}
+
+// ACT-0.1 C23: a typo in an explicit config path must not silently select
+// epoch 1.
+func TestLoadConfigMissingExplicitFileIsAnError(t *testing.T) {
+	t.Chdir(t.TempDir())
+	paths := []string{
+		filepath.Join(t.TempDir(), "does-not-exist.json"),
+		"cfg/evidence.json",
+		".gatekeeper/evidence.jsno",
+	}
+	for _, path := range paths {
+		if cfg, err := LoadConfig(path); err == nil {
+			t.Fatalf("LoadConfig(%q): expected an error for a missing explicit config, got epoch %d", path, cfg.Epoch)
+		}
 	}
 }
 
@@ -548,6 +569,55 @@ func TestLoadConfigRejectsGarbage(t *testing.T) {
 	path := writeConfig(t, `not json`)
 	if _, err := LoadConfig(path); err == nil {
 		t.Fatal("expected an error for a garbage config file")
+	}
+}
+
+// ACT-0.1 C23: json.Decoder.Decode stops after the first value, so without
+// an explicit end-of-input check the trailing data would be ignored.
+func TestLoadConfigRejectsTrailingData(t *testing.T) {
+	cases := map[string]string{
+		"second object": `{"epoch": 2}{"epoch": 5}`,
+		"stray text":    `{"epoch": 2} garbage`,
+		"second value":  "{\"epoch\": 2}\n3",
+	}
+	for name, contents := range cases {
+		t.Run(name, func(t *testing.T) {
+			path := writeConfig(t, contents)
+			if cfg, err := LoadConfig(path); err == nil {
+				t.Fatalf("expected an error for trailing data, got epoch %d", cfg.Epoch)
+			}
+		})
+	}
+}
+
+func TestLoadConfigAcceptsTrailingWhitespace(t *testing.T) {
+	path := writeConfig(t, "{\"epoch\": 2}\n\n  \t\n")
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.Epoch != 2 {
+		t.Fatalf("expected epoch 2, got %d", cfg.Epoch)
+	}
+}
+
+func TestRecordRejectsMissingExplicitConfig(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	resultPath := writeResult(t, t.TempDir(), nil)
+	err := Record(Params{
+		ResultPath: resultPath,
+		Evidence:   t.TempDir(),
+		Repo:       repo,
+		Commit:     strings.Repeat("f", 40),
+		RunURL:     "https://github.com/" + repo + "/actions/runs/7",
+		RunID:      "7001",
+		RunAttempt: "1",
+		ConfigPath: filepath.Join(t.TempDir(), "typo.json"),
+	})
+	if err == nil {
+		t.Fatal("expected Record to fail for a missing explicit config")
 	}
 }
 

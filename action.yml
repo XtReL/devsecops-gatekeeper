@@ -179,4 +179,9 @@ runs:
         fi
         export EVIDENCE_BRANCH
 
+        # Same config file for record as for the branch above: record
+        # derives the log origin from it (ADR 0002), so both must agree.
+        EVIDENCE_CONFIG="$CONFIG"
+        export EVIDENCE_CONFIG
+
         "$ACTION_PATH/scripts/evidence-push.sh"

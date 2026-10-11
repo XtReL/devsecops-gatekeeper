@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,16 +57,19 @@ type Config struct {
 }
 
 // LoadConfig reads the epoch config at path (DefaultConfigPath if path is
-// empty). A missing file means epoch 1, for backward compatibility with
-// repositories that predate ADR 0002 rotation. The file is strict JSON: an
-// unknown field or an epoch below 1 is an error.
+// empty). A missing file means epoch 1 only at DefaultConfigPath, for
+// backward compatibility with repositories that predate ADR 0002 rotation;
+// a missing file at any other path is an error, so a typo in an explicit
+// --config (or the action's config input) cannot silently select epoch 1.
+// The file is strict JSON: exactly one object, no trailing data, no unknown
+// field, and an epoch of at least 1.
 func LoadConfig(path string) (Config, error) {
 	if path == "" {
 		path = DefaultConfigPath
 	}
 	// #nosec G304 -- path is DefaultConfigPath or the operator's own --config flag.
 	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, os.ErrNotExist) && filepath.Clean(path) == DefaultConfigPath {
 		return Config{Epoch: 1}, nil
 	}
 	if err != nil {
@@ -76,6 +80,11 @@ func LoadConfig(path string) (Config, error) {
 	var cfg Config
 	if err := dec.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("evidence: parse config %s: %w", path, err)
+	}
+	// Decode stops after the first value; anything but end of input after
+	// it (a second object, stray text) must not be silently ignored.
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return Config{}, fmt.Errorf("evidence: parse config %s: unexpected data after the JSON object", path)
 	}
 	if cfg.Epoch < 1 {
 		return Config{}, fmt.Errorf("evidence: config %s: epoch must be >= 1, got %d", path, cfg.Epoch)
