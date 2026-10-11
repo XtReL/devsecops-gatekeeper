@@ -10,7 +10,7 @@
 
 ## 2. Конфиг эпохи — единственный источник
 - Файл `.gatekeeper/evidence.json` в ветке по умолчанию: `{"epoch": 1}`. Больше полей нет: ветка и origin **выводятся** из номера эпохи, дублей быть не должно.
-- Файла нет → эпоха 1 (обратная совместимость).
+- Файла нет → эпоха 1 (обратная совместимость), но только если конфиг не назван (нет флага `--config`, не задан вход `config` action): тогда читается `.gatekeeper/evidence.json`. Названный путь обязан существовать, иначе ошибка, в том числе для `.gatekeeper/evidence.json` (ACT-0.1, C23).
 - Правила вывода:
   - origin = `event.EpochOrigin(evidence.Origin(repo), epoch)`: эпоха 1 → `github.com/OWNER/REPO/gatekeeper-evidence/v1`, эпоха k ≥ 2 → `…/v1/e<k>`;
   - ветка = `gatekeeper-evidence` для эпохи 1, `gatekeeper-evidence-e<k>` для k ≥ 2.
@@ -45,7 +45,7 @@
 Добавь `scripts/rotation_test.sh` в `scripts/check.sh` и отдельным заданием без секретов в workflow `Gatekeeper Action` (по образцу `evidence-push.sh self-test`).
 
 ## 7. Тесты Go
-- `LoadConfig`: отсутствие файла → эпоха 1; неизвестное поле, `epoch: 0`, мусор → ошибка.
+- `LoadConfig`: путь не назван и файла по умолчанию нет → эпоха 1; названный путь без файла → ошибка; неизвестное поле, `epoch: 0`, мусор → ошибка.
 - `Target`: эпохи 1, 2, 10 — точные ветка и origin.
 - `record` с конфигом эпохи 2 пишет в журнал с origin `…/v1/e2`.
 
