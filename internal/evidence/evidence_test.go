@@ -626,23 +626,53 @@ func TestLoadConfigAcceptsTrailingWhitespace(t *testing.T) {
 	}
 }
 
+// ACT-0.1 C23. The log is initialised at epoch 1 and valid, so a Record that
+// fell back to epoch 1 for the missing config (the old behaviour) would
+// succeed and append an entry; the test fails on exactly that. The error must
+// also name the config as the reason, not some later failure.
 func TestRecordRejectsMissingNamedConfig(t *testing.T) {
 	pemBytes := genKeyPEM(t)
 	withSigningKey(t, pemBytes)
 	repo := "XtReL/devsecops-gatekeeper"
 	resultPath := writeResult(t, t.TempDir(), nil)
-	err := Record(Params{
+
+	signer, err := keys.ParseSigner(pemBytes)
+	if err != nil {
+		t.Fatalf("parse signer: %v", err)
+	}
+	_, epoch1Origin := Target(repo, Config{Epoch: 1})
+	logDir := t.TempDir()
+	if _, err := filelog.Init(logDir, epoch1Origin, signer); err != nil {
+		t.Fatalf("init epoch 1 log: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(logDir, "entries", ".gitkeep"), nil, 0o644); err != nil {
+		t.Fatalf("write entries/.gitkeep: %v", err)
+	}
+
+	typo := filepath.Join(t.TempDir(), "typo.json")
+	err = Record(Params{
 		ResultPath: resultPath,
-		Evidence:   t.TempDir(),
+		Evidence:   logDir,
 		Repo:       repo,
 		Commit:     strings.Repeat("f", 40),
 		RunURL:     "https://github.com/" + repo + "/actions/runs/7",
 		RunID:      "7001",
 		RunAttempt: "1",
-		ConfigPath: filepath.Join(t.TempDir(), "typo.json"),
+		ConfigPath: typo,
 	})
 	if err == nil {
-		t.Fatal("expected Record to fail for a missing explicit config")
+		t.Fatal("Record succeeded with a missing named config (silent fallback to epoch 1)")
+	}
+	if !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), "read config "+typo) {
+		t.Fatalf("Record failed, but not because the named config is missing: %v", err)
+	}
+
+	log, err := filelog.Open(logDir, epoch1Origin, signer)
+	if err != nil {
+		t.Fatalf("open log: %v", err)
+	}
+	if size, err := log.Size(); err != nil || size != 0 {
+		t.Fatalf("a rejected Record must not append: size %d, err %v", size, err)
 	}
 }
 

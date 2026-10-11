@@ -294,8 +294,16 @@ func TestRunRecordAppliesCustomConfig(t *testing.T) {
 	if code, stderr := runGatekeeperEnv(t, env, recordArgs("9102", "--config", customConfig)...); code != 0 {
 		t.Fatalf("record --config epoch 2: expected exit code 0, got %d (stderr: %s)", code, stderr)
 	}
-	if code, _ := runGatekeeperEnv(t, env, recordArgs("9103", "--config", filepath.Join(configDir, "typo.json"))...); code != 2 {
-		t.Fatalf("record with a missing --config: expected exit code 2, got %d", code)
+	// Without the C23 fix the missing file meant epoch 1 and record failed
+	// anyway, on this epoch-2 log, with a wrong-origin error. Exit code 2 alone
+	// cannot tell the two apart: the reason has to be the missing config.
+	typo := filepath.Join(configDir, "typo.json")
+	code, stderr := runGatekeeperEnv(t, env, recordArgs("9103", "--config", typo)...)
+	if code != 2 {
+		t.Fatalf("record with a missing --config: expected exit code 2, got %d (stderr: %s)", code, stderr)
+	}
+	if !strings.Contains(stderr, "read config "+typo) || strings.Contains(stderr, "does not verify") {
+		t.Fatalf("record with a missing --config failed for the wrong reason (stderr: %s)", stderr)
 	}
 }
 
