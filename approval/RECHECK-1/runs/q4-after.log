@@ -1,0 +1,12 @@
+== Q4 [after]
+  (шаг target: rc=2 out='' err='gatekeeper evidence-target: evidence: read config .gatekeeper/evidence.json: open .gatekeeper/evidence.json: no such file or directory')
+  (бинарник напрямую: rc=2 out='' err='gatekeeper evidence-target: evidence: read config .gatekeeper/evidence.json: open .gatekeeper/evidence.json: no such file or directory')
+  (шаг record: rc=2)
+    | gatekeeper evidence-target: evidence: read config .gatekeeper/evidence.json: open .gatekeeper/evidence.json: no such file or directory
+  ok   шаг target упал: 1
+  ok   шаг target: сообщение: найдено /no such file/
+  ok   шаг target: branch не выведен: 
+  ok   бинарник rc: 2
+  ok   шаг record упал: 1
+  ok   записей: 0
+RESULT: PASS (наблюдаемое поведение совпало с выводом) [after]

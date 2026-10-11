@@ -1,0 +1,24 @@
+== Q4 [after]
+  (шаг target: rc=0 out='branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1' err='')
+  (бинарник напрямую: rc=0 out='branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1' err='')
+  (шаг record: rc=0)
+    | evidence-push: attempt 1/5
+    | From /tmp/tmp.VuDtgPk8CB/origin
+    |  * branch            gatekeeper-evidence -> FETCH_HEAD
+    | HEAD is now at 2f5865e init
+    | [gatekeeper-evidence bc803d6] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1/1
+    |  2 files changed, 4 insertions(+), 3 deletions(-)
+    |  create mode 100644 entries/00000000000000000000.json
+    | To /tmp/tmp.VuDtgPk8CB/origin.git
+    |    2f5865e..bc803d6  HEAD -> gatekeeper-evidence
+    | evidence-push: pushed
+  FAIL шаг target упал: ожидалось '1', получено '0'
+  FAIL шаг target: сообщение: нет /no such file/ в: 
+  FAIL шаг target: branch не выведен: ожидалось '', получено 'branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1'
+  FAIL бинарник rc: ожидалось '2', получено '0'
+  FAIL шаг record упал: ожидалось '1', получено '0'
+  FAIL записей: ожидалось '0', получено '1'
+RESULT: FAIL (6 расхождений с ожидаемым выводом) [after]

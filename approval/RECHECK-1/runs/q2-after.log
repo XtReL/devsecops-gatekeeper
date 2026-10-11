@@ -1,0 +1,10 @@
+== Q2 [after]
+  ok   контроль (один объект) rc: 0
+  ok   контроль branch: найдено /^branch=gatekeeper-evidence-e2$/
+  (два объекта: rc=2 stdout='' stderr='gatekeeper evidence-target: evidence: parse config /tmp/tmp.OIV4fUmk20/two.json: unexpected data after the JSON object')
+  ok   два объекта: rc: 2
+  ok   два объекта: сообщение: найдено /unexpected data after the JSON object/
+  ok   два объекта: stdout пуст: 
+  (шаг target: rc=2 out='')
+  ok   шаг target rc: 2
+RESULT: PASS (наблюдаемое поведение совпало с выводом) [after]

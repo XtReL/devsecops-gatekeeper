@@ -1,0 +1,21 @@
+== Q5 [after]
+  (evidence-target, форма sep: rc=0 out='branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1' err='')
+  (record, форма sep: rc=0 err='')
+  FAIL evidence-target/sep rc: ожидалось '2', получено '0'
+  FAIL evidence-target/sep сообщение: нет /--config is empty/ в: 
+  FAIL evidence-target/sep stdout пуст: ожидалось '', получено 'branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1'
+  FAIL record/sep rc: ожидалось '2', получено '0'
+  FAIL record/sep сообщение: нет /--config is empty/ в: 
+  (evidence-target, форма eq: rc=0 out='branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1' err='')
+  (record, форма eq: rc=0 err='')
+  FAIL evidence-target/eq rc: ожидалось '2', получено '0'
+  FAIL evidence-target/eq сообщение: нет /--config is empty/ в: 
+  FAIL evidence-target/eq stdout пуст: ожидалось '', получено 'branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1'
+  FAIL record/eq rc: ожидалось '2', получено '0'
+  FAIL record/eq сообщение: нет /--config is empty/ в: 
+  FAIL записей в журнале: ожидалось '0', получено '2'
+RESULT: FAIL (11 расхождений с ожидаемым выводом) [after]

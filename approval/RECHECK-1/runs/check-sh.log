@@ -1,0 +1,23 @@
+check: gofmt -l .
+check: go vet ./...
+check: go test -race -timeout 30s ./...
+?   	devsecops-gatekeeper/cmd/api	[no test files]
+ok  	devsecops-gatekeeper/cmd/gatekeeper	2.407s
+?   	devsecops-gatekeeper/cmd/scanner	[no test files]
+?   	devsecops-gatekeeper/internal/auth	[no test files]
+?   	devsecops-gatekeeper/internal/authz	[no test files]
+?   	devsecops-gatekeeper/internal/billing	[no test files]
+?   	devsecops-gatekeeper/internal/broker	[no test files]
+?   	devsecops-gatekeeper/internal/cache	[no test files]
+?   	devsecops-gatekeeper/internal/config	[no test files]
+?   	devsecops-gatekeeper/internal/db	[no test files]
+ok  	devsecops-gatekeeper/internal/engine	2.611s
+ok  	devsecops-gatekeeper/internal/evidence	2.034s
+?   	devsecops-gatekeeper/internal/github	[no test files]
+?   	devsecops-gatekeeper/internal/handler	[no test files]
+?   	devsecops-gatekeeper/internal/iam	[no test files]
+ok  	devsecops-gatekeeper/internal/middleware	1.022s
+?   	devsecops-gatekeeper/internal/scanner	[no test files]
+check: verify production compilation
+check: gosec v2.29.0 -exclude=G104,G108 ./...
+go: github.com/securego/gosec/v2/cmd/gosec@v2.29.0: module lookup disabled by GOPROXY=off

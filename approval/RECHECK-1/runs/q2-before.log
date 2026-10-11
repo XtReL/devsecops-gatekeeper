@@ -1,0 +1,11 @@
+== Q2 [before]
+  ok   контроль (один объект) rc: 0
+  ok   контроль branch: найдено /^branch=gatekeeper-evidence-e2$/
+  (два объекта: rc=0 stdout='branch=gatekeeper-evidence-e2
+origin=github.com/octo/recheck/gatekeeper-evidence/v1/e2' stderr='')
+  ok   два объекта: rc: 0
+  ok   два объекта: branch по первому объекту: найдено /^branch=gatekeeper-evidence-e2$/
+  (шаг target: rc=0 out='branch=gatekeeper-evidence-e2
+origin=github.com/octo/recheck/gatekeeper-evidence/v1/e2')
+  ok   шаг target rc: 0
+RESULT: PASS (наблюдаемое поведение совпало с выводом) [before]

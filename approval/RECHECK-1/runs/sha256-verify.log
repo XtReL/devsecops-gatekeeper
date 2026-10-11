@@ -1,0 +1,3 @@
+C23/c23-config-strict-repro.sh: OK
+C24/c24-recheck-assert.sh: OK
+c24/c24-config-input-control.sh: в SHA256SUMS записи нет, sha256=b41b6e709fab0d060b010810c6a0144c7345c62e363ce51cd0a0b0d8925c2feb — НЕ ЗАПУСКАЛСЯ

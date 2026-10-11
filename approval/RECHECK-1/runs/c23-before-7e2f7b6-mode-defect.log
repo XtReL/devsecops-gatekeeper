@@ -1,0 +1,27 @@
+== режим: defect; gatekeeper: usage: gatekeeper <scan|evidence-init|evidence-target|record
+-- A. хвост после JSON-объекта
+ok    A1  хвост: второй объект {"epoch":2}{"epoch":5}   exit=0 branch=gatekeeper-evidence-e2
+ok    A2  хвост: посторонний текст                  exit=0 branch=gatekeeper-evidence-e2
+ok    A3  [положит. контроль] пробелы и перевод строки после объекта exit=0 branch=gatekeeper-evidence-e2
+-- B. отсутствующий файл по явному пути
+ok    B1  явный --config /nonexistent.json                          exit=0 branch=gatekeeper-evidence
+ok    B2  явный относительный путь с опечаткой cfg/typo.json exit=0 branch=gatekeeper-evidence
+-- C. --config не передан
+ok    C1  [положит. контроль] флага нет, файла нет: эпоха 1 exit=0 branch=gatekeeper-evidence
+ok    C2  [положит. контроль] флага нет, файл по умолчанию есть: читается exit=0 branch=gatekeeper-evidence-e3
+-- D. путь по умолчанию задан явно
+ok    D1  явно .gatekeeper/evidence.json, файла нет          exit=0 branch=gatekeeper-evidence
+ok    D2  [положит. контроль] явно .gatekeeper/evidence.json, файл есть exit=0 branch=gatekeeper-evidence-e3
+-- E. явный пустой --config
+ok    E1  --config "" (два аргумента), файла по умолчанию нет exit=0 branch=gatekeeper-evidence
+ok    E2  --config= (один аргумент), файла по умолчанию нет exit=0 branch=gatekeeper-evidence
+ok    E3  --config "", файл по умолчанию есть (откат на него недопустим) exit=0 branch=gatekeeper-evidence-e3
+-- F. тот же дефект в record (журнал эпохи 1 есть, конфиг указан неверно)
+ok    F1  record --config cfg/typo.json (файла нет)              exit=0 branch=-
+ok    F2  record --config ""                                             exit=0 branch=-
+ok    F3  [положит. контроль] record без --config, файла нет: эпоха 1 exit=0 branch=-
+-- G. тело шага target из action.yml и значение входа config по умолчанию
+ok    G1  шаг target, CONFIG="" , файла нет                   exit=0 branch=gatekeeper-evidence
+ok    G2  шаг target, CONFIG=.gatekeeper/evidence.json, файла нет exit=0 branch=gatekeeper-evidence
+ok    G3  значение по умолчанию входа config в action.yml default=.gatekeeper/evidence.json
+== итог: случаев 18, расхождений с ожиданием режима defect: 0

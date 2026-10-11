@@ -1,0 +1,11 @@
+q1: before exit=0, after exit=0
+q1 negctl: exit=1 / 1 (ожидается 1 / 1, кроме Q3 — там поведение совпадает: 0 / 0)
+q2: before exit=0, after exit=0
+q2 negctl: exit=1 / 1 (ожидается 1 / 1, кроме Q3 — там поведение совпадает: 0 / 0)
+q3: before exit=0, after exit=0
+q3 negctl: exit=0 / 0 (ожидается 1 / 1, кроме Q3 — там поведение совпадает: 0 / 0)
+q4: before exit=0, after exit=0
+q4 negctl: exit=1 / 1 (ожидается 1 / 1, кроме Q3 — там поведение совпадает: 0 / 0)
+q5: before exit=0, after exit=0
+q5 negctl: exit=1 / 1 (ожидается 1 / 1, кроме Q3 — там поведение совпадает: 0 / 0)
+run-checks: rc=0

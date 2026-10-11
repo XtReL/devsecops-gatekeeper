@@ -1,0 +1,9 @@
+== Q2 [before]
+  ok   контроль (один объект) rc: 0
+  ok   контроль branch: найдено /^branch=gatekeeper-evidence-e2$/
+  (два объекта: rc=2 stdout='' stderr='gatekeeper evidence-target: evidence: parse config /tmp/tmp.78UjmtLb5f/two.json: unexpected data after the JSON object')
+  FAIL два объекта: rc: ожидалось '0', получено '2'
+  FAIL два объекта: branch по первому объекту: нет /^branch=gatekeeper-evidence-e2$/ в: 
+  (шаг target: rc=2 out='')
+  FAIL шаг target rc: ожидалось '0', получено '2'
+RESULT: FAIL (3 расхождений с ожидаемым выводом) [before]

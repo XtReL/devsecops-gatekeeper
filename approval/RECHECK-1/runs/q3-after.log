@@ -1,0 +1,20 @@
+== Q3 [after] default входа config = ''
+  (target: rc=0 out='branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1' err='')
+  ok   target rc: 0
+  ok   target branch: найдено /^branch=gatekeeper-evidence$/
+  ok   target origin: найдено /^origin=.*gatekeeper-evidence/v1$/
+  (record rc=0)
+    | evidence-push: attempt 1/5
+    | From /tmp/tmp.dUd2cm3Ezu/origin
+    |  * branch            gatekeeper-evidence -> FETCH_HEAD
+    | HEAD is now at de006dc init
+    | [gatekeeper-evidence 2abd208] evidence: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa run 1/1
+    |  2 files changed, 4 insertions(+), 3 deletions(-)
+    |  create mode 100644 entries/00000000000000000000.json
+    | To /tmp/tmp.dUd2cm3Ezu/origin.git
+    |    de006dc..2abd208  HEAD -> gatekeeper-evidence
+    | evidence-push: pushed
+  ok   record rc: 0
+  ok   записей в журнале эпохи 1: 1
+RESULT: PASS (наблюдаемое поведение совпало с выводом) [after]

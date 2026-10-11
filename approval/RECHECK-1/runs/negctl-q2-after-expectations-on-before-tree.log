@@ -1,0 +1,13 @@
+== Q2 [after]
+  ok   контроль (один объект) rc: 0
+  ok   контроль branch: найдено /^branch=gatekeeper-evidence-e2$/
+  (два объекта: rc=0 stdout='branch=gatekeeper-evidence-e2
+origin=github.com/octo/recheck/gatekeeper-evidence/v1/e2' stderr='')
+  FAIL два объекта: rc: ожидалось '2', получено '0'
+  FAIL два объекта: сообщение: нет /unexpected data after the JSON object/ в: 
+  FAIL два объекта: stdout пуст: ожидалось '', получено 'branch=gatekeeper-evidence-e2
+origin=github.com/octo/recheck/gatekeeper-evidence/v1/e2'
+  (шаг target: rc=0 out='branch=gatekeeper-evidence-e2
+origin=github.com/octo/recheck/gatekeeper-evidence/v1/e2')
+  FAIL шаг target rc: ожидалось '2', получено '0'
+RESULT: FAIL (4 расхождений с ожидаемым выводом) [after]

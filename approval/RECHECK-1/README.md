@@ -26,14 +26,14 @@
 | C24/c24-recheck-assert.sh | совпал | **Не запускался** (см. ниже). |
 | C24/c24-config-input-control.sh | **записи в SHA256SUMS нет** | **Не запускался.** |
 
-C24: обёртка `c24-recheck-assert.sh` при запуске исполняет `c24-config-input-control.sh`, а у него в `SHA256SUMS` нет строки. Условие «сверить sha256 до запуска» для него выполнить нельзя, поэтому C24 пропущен (`logs/c24-NOT-RUN.txt`). Нужно решение владельца: добавить хеш в `SHA256SUMS` на ветке приёмки или явно разрешить запуск.
+C24: обёртка `c24-recheck-assert.sh` при запуске исполняет `c24-config-input-control.sh`, а у него в `SHA256SUMS` нет строки. Условие «сверить sha256 до запуска» для него выполнить нельзя, поэтому C24 пропущен (`runs/c24-NOT-RUN.txt`). Нужно решение владельца: добавить хеш в `SHA256SUMS` на ветке приёмки или явно разрешить запуск.
 
 ## Прочее
-- `scripts/check.sh` остановился на шаге `gosec`: `go run …/gosec@v2.29.0` требует модуль вне `go.sum`, а сеть разрешена только для модулей по `go.sum` (запуск с `GOPROXY=off`). До этого шага `gofmt`, `go vet`, `go test -race` и сборка прошли; шаги после gosec (lint-workflows, self-scan, evidence-push_test, rotation_test) не выполнялись. Код объекта проверки не менялся, поэтому, по решению владельца, на выводы проверки это не влияет. Правило CLAUDE.md о зелёном `check.sh` перед push для этой работы владелец не применил (в коммите только файлы `approval/RECHECK-1/`, кода нет). Лог приложен как есть: `logs/check-sh.log`.
+- `scripts/check.sh` остановился на шаге `gosec`: `go run …/gosec@v2.29.0` требует модуль вне `go.sum`, а сеть разрешена только для модулей по `go.sum` (запуск с `GOPROXY=off`). До этого шага `gofmt`, `go vet`, `go test -race` и сборка прошли; шаги после gosec (lint-workflows, self-scan, evidence-push_test, rotation_test) не выполнялись. Код объекта проверки не менялся, поэтому, по решению владельца, на выводы проверки это не влияет. Правило CLAUDE.md о зелёном `check.sh` перед push для этой работы владелец не применил (в коммите только файлы `approval/RECHECK-1/`, кода нет). Лог приложен как есть: `runs/check-sh.log`.
 - Go скачал toolchain `go1.25.8` (по `toolchain`/`go` в go.mod) при первом вызове `go`; это загрузка с `proxy.golang.org` под проверкой sumdb, а не запись из `go.sum` репозитория.
 - Для воспроизведения: `run-checks.sh <before-tree> <before-bin> <after-tree> <after-bin> <logs>`.
 
 ## Состав папки
 - `checks/` — lib.sh и q1…q5; `run-checks.sh`
-- `logs/` — полный вывод каждого прогона отдельным файлом: `q{1..5}-{before,after}.log`, `negctl-q*.log` (контроль «ожидания не того коммита»; для Q3 поведение совпадает, оба exit 0), `c23-*.log`, `sha256-verify.log`, `check-sh.log`, `c24-NOT-RUN.txt`
+- `runs/` — полный вывод каждого прогона отдельным файлом: `q{1..5}-{before,after}.log`, `negctl-q*.log` (контроль «ожидания не того коммита»; для Q3 поведение совпадает, оба exit 0), `c23-*.log`, `sha256-verify.log`, `check-sh.log`, `c24-NOT-RUN.txt`
 - `SHA256SUMS` — дословная копия из `origin/acceptance/act-v0`; `SHA256SUMS.outputs` — sha256 файлов этой папки

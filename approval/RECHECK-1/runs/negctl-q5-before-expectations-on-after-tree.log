@@ -1,0 +1,13 @@
+== Q5 [before]
+  (evidence-target, форма sep: rc=2 out='' err='gatekeeper evidence-target: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  (record, форма sep: rc=2 err='gatekeeper record: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  FAIL evidence-target/sep rc: ожидалось '0', получено '2'
+  FAIL evidence-target/sep branch: нет /^branch=gatekeeper-evidence$/ в: 
+  FAIL record/sep rc: ожидалось '0', получено '2'
+  (evidence-target, форма eq: rc=2 out='' err='gatekeeper evidence-target: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  (record, форма eq: rc=2 err='gatekeeper record: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  FAIL evidence-target/eq rc: ожидалось '0', получено '2'
+  FAIL evidence-target/eq branch: нет /^branch=gatekeeper-evidence$/ в: 
+  FAIL record/eq rc: ожидалось '0', получено '2'
+  FAIL записей в журнале: ожидалось '2', получено '0'
+RESULT: FAIL (7 расхождений с ожидаемым выводом) [before]

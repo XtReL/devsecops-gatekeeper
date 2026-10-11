@@ -1,0 +1,13 @@
+== Q1 [after]
+  ok   target rc: 0
+  ok   target branch: найдено /^branch=gatekeeper-evidence-e2$/
+  (record rc=1; вывод шага ниже)
+    | evidence-push: attempt 1/5
+    | From /tmp/tmp.R1NmxZ5E1Y/origin
+    |  * branch            gatekeeper-evidence-e2 -> FETCH_HEAD
+    | HEAD is now at e4da35e init
+    | gatekeeper record: evidence: open log: filelog: current checkpoint does not verify under this log key: tlog: note has no valid signature from the expected key
+    | evidence-push: gatekeeper record exited 2, not retrying
+  FAIL record rc: ожидалось '0', получено '1'
+  FAIL записей в журнале эпохи 2: ожидалось '1', получено '0'
+RESULT: FAIL (2 расхождений с ожидаемым выводом) [after]

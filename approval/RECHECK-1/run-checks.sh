@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# run-checks.sh <before-tree> <before-bin> <after-tree> <after-bin> <logs-dir>
-# Прогоняет Q1..Q5 на обоих коммитах (logs/qN-<label>.log) и негативный
+# run-checks.sh <before-tree> <before-bin> <after-tree> <after-bin> <runs-dir>
+# Прогоняет Q1..Q5 на обоих коммитах (runs/qN-<label>.log) и негативный
 # контроль: те же проверки с ПЕРЕПУТАННЫМ ярлыком (ожидания "до" на дереве
-# "после" и наоборот) обязаны завершаться кодом 1 (logs/negctl-qN-*.log).
+# "после" и наоборот) обязаны завершаться кодом 1 (runs/negctl-qN-*.log).
 set -uo pipefail
 BT=$1; BB=$2; AT=$3; AB=$4; LOGS=$5
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

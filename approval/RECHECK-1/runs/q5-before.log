@@ -1,0 +1,15 @@
+== Q5 [before]
+  (evidence-target, форма sep: rc=0 out='branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1' err='')
+  (record, форма sep: rc=0 err='')
+  ok   evidence-target/sep rc: 0
+  ok   evidence-target/sep branch: найдено /^branch=gatekeeper-evidence$/
+  ok   record/sep rc: 0
+  (evidence-target, форма eq: rc=0 out='branch=gatekeeper-evidence
+origin=github.com/octo/recheck/gatekeeper-evidence/v1' err='')
+  (record, форма eq: rc=0 err='')
+  ok   evidence-target/eq rc: 0
+  ok   evidence-target/eq branch: найдено /^branch=gatekeeper-evidence$/
+  ok   record/eq rc: 0
+  ok   записей в журнале: 2
+RESULT: PASS (наблюдаемое поведение совпало с выводом) [before]

@@ -1,0 +1,9 @@
+C24 не запускался.
+
+c24-recheck-assert.sh (sha256 совпал с SHA256SUMS) при старте исполняет
+c24-config-input-control.sh из своего каталога. Для этого файла в
+docs/acceptance/controls/ACT-0.1/SHA256SUMS (ветка acceptance/act-v0) записи нет:
+  b41b6e709fab0d060b010810c6a0144c7345c62e363ce51cd0a0b0d8925c2feb  C24/c24-config-input-control.sh
+(хеш вычислен по git show origin/acceptance/act-v0:..., содержимое файла не просматривалось).
+Условие «сверить sha256 перед запуском» для него невыполнимо, поэтому ни он,
+ни обёртка не исполнялись. Запуск требует решения владельца.

@@ -1,0 +1,17 @@
+== Q5 [after]
+  (evidence-target, форма sep: rc=2 out='' err='gatekeeper evidence-target: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  (record, форма sep: rc=2 err='gatekeeper record: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  ok   evidence-target/sep rc: 2
+  ok   evidence-target/sep сообщение: найдено /--config is empty/
+  ok   evidence-target/sep stdout пуст: 
+  ok   record/sep rc: 2
+  ok   record/sep сообщение: найдено /--config is empty/
+  (evidence-target, форма eq: rc=2 out='' err='gatekeeper evidence-target: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  (record, форма eq: rc=2 err='gatekeeper record: --config is empty (omit the flag to use .gatekeeper/evidence.json)')
+  ok   evidence-target/eq rc: 2
+  ok   evidence-target/eq сообщение: найдено /--config is empty/
+  ok   evidence-target/eq stdout пуст: 
+  ok   record/eq rc: 2
+  ok   record/eq сообщение: найдено /--config is empty/
+  ok   записей в журнале: 0
+RESULT: PASS (наблюдаемое поведение совпало с выводом) [after]
