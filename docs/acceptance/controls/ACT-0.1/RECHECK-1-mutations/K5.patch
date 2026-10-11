@@ -1,0 +1,11 @@
+--- a/action.yml
++++ b/action.yml
+@@ -43,7 +43,7 @@
+       the file must exist (an error, never epoch 1), even when the path is
+       .gatekeeper/evidence.json.
+     required: false
+-    default: ''
++    default: '.gatekeeper/evidence.json'
+ 
+ outputs:
+   gatekeeper:

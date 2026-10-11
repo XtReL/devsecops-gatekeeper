@@ -1,0 +1,1 @@
+evidence-target не отклоняет явный пустой --config

@@ -1,0 +1,11 @@
+--- a/action.yml
++++ b/action.yml
+@@ -146,7 +146,7 @@
+         if [ -n "$CONFIG" ]; then
+           config_args=(--config "$CONFIG")
+         fi
+-        "$GATEKEEPER_BIN" evidence-target --repo "$REPO" ${config_args[@]+"${config_args[@]}"} >> "$GITHUB_OUTPUT"
++        "$GATEKEEPER_BIN" evidence-target --repo "$REPO" >> "$GITHUB_OUTPUT"
+ 
+     # ---- mode: record (the only mode that ever sees the signing key) --
+     # No actions/setup-go, no module download, no build here (ADR 0003):

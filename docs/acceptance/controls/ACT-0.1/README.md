@@ -118,3 +118,18 @@ python3 -I -c 'import sys,yaml;print([s for s in yaml.safe_load(open(sys.argv[1]
 - C15 (три неверных ключа), C19 (дубли и порядок), C25 (разбор YAML на `${{ }}`): ни в акте, ни здесь команд нет.
 - Три проверки вне заявлений: история git не сканируется, пути из allowlist gitleaks, отпечаток без соли подтверждается подбором.
 - Чтение и подсчёты (C2, C7 как поиск литералов, C9, C27 и другие) файлов не имели.
+
+## RECHECK-1 (2026-10-11): контроли повторной приёмки исправлений C23/C24
+
+Добавлено сессией повторной приёмки; контроли выше не менялись. Хэши в `SHA256SUMS` (проверка `sha256sum -c SHA256SUMS` из этой папки), хэш самого `run-recheck-1.sh` приведён в `docs/acceptance/ACT-0.1-RECHECK-1.md`.
+
+Подготовка: деревья `7e2f7b6` и `f7c2cfe` через `git archive`, в каждом `bin/gatekeeper` (`GOFLAGS=-mod=readonly go build -o bin/gatekeeper ./cmd/gatekeeper`) и `trustcore` (`go build github.com/XtReL/trust-core/cmd/trustcore`). Нужны `git`, `go 1.25.8`, `openssl`, `python3` с `yaml`, `patch`.
+
+| Контроль | Строка акта | Куда положить | Команда | Ожидание |
+|---|---|---|---|---|
+| `C23/c23-config-strict-repro.sh` (репродуктор дефекта) | C23 | никуда, запускается из папки | `bash C23/c23-config-strict-repro.sh <gatekeeper-bin> <root> defect\|fixed` | `7e2f7b6` + `defect`: код 0; `f7c2cfe` + `fixed`: код 0; перекрёстные: код 1 (12 из 18 случаев расходятся, остальные 6 - положительные контроли) |
+| `C24/c24-recheck-assert.sh` (утверждения над сохранённым `C24/c24-config-input-control.sh`) | C24 | никуда | `bash C24/c24-recheck-assert.sh <gatekeeper-bin> <root> defect\|fixed` | `7e2f7b6` + `defect`: случай 1 `exit=1`; `f7c2cfe` + `fixed`: случай 1 `exit=0`; перекрёстные: код 1 |
+| `RECHECK-1-mutations/K1..K9.patch` + `run-mutations.sh` | C23, C24 | патчи применяются к копии `f7c2cfe` | `bash RECHECK-1-mutations/run-mutations.sh <root-f7c2cfe> <trustcore-bin> [K1 ...]` | исходы по слоям GO/SH/C24/C23, таблица в отчёте |
+| `run-recheck-1.sh` | C23, C24 | никуда | `bash run-recheck-1.sh <root-7e2f7b6> <root-f7c2cfe> <trustcore-bin>` | сверка `SHA256SUMS`, затем 8 прогонов; последняя строка `run-recheck-1: OK` |
+
+Репродуктор C23 создан в сессии повторной приёмки (не восстановлен по памяти). Первая версия `$(newdir)` делила один каталог между случаями (счётчик в подоболочке) и краснела не из-за кода; это ошибка контроля, исправлена до записи результатов (см. отчёт, раздел 2).

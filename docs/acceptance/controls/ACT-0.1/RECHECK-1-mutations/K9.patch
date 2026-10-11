@@ -1,0 +1,13 @@
+--- a/cmd/gatekeeper/main.go
++++ b/cmd/gatekeeper/main.go
+@@ -167,10 +167,6 @@
+ 		fmt.Fprintln(os.Stderr, "gatekeeper evidence-target: --repo is required")
+ 		return 2
+ 	}
+-	if err := checkConfigFlag(fs, *config); err != nil {
+-		fmt.Fprintf(os.Stderr, "gatekeeper %s: %v\n", fs.Name(), err)
+-		return 2
+-	}
+ 
+ 	cfg, err := evidence.LoadConfig(*config)
+ 	if err != nil {

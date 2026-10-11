@@ -1,0 +1,1 @@
+У входа config снова default ".gatekeeper/evidence.json"

@@ -1,0 +1,13 @@
+--- a/cmd/gatekeeper/main.go
++++ b/cmd/gatekeeper/main.go
+@@ -197,10 +197,6 @@
+ 	if err := fs.Parse(args); err != nil {
+ 		return 2
+ 	}
+-	if err := checkConfigFlag(fs, *config); err != nil {
+-		fmt.Fprintf(os.Stderr, "gatekeeper %s: %v\n", fs.Name(), err)
+-		return 2
+-	}
+ 	if *result == "" || *dir == "" || *repo == "" || *commit == "" || *runID == "" || *runAttempt == "" {
+ 		fmt.Fprintln(os.Stderr, "gatekeeper record: --result, --evidence, --repo, --commit, --run-id and --run-attempt are required")
+ 		return 2

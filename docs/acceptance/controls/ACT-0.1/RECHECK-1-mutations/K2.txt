@@ -1,0 +1,1 @@
+Шаг record не экспортирует EVIDENCE_CONFIG для evidence-push.sh

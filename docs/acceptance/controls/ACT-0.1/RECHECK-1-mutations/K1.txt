@@ -1,0 +1,1 @@
+Убрана передача --config из evidence-push.sh в gatekeeper record (прямая просьба задания)

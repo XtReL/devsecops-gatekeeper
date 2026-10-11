@@ -1,0 +1,11 @@
+--- a/action.yml
++++ b/action.yml
+@@ -198,7 +198,7 @@
+         # log origin from it (ADR 0002), so both must agree. Set only when the
+         # input is set, so evidence-push.sh passes --config only then.
+         if [ -n "$CONFIG" ]; then
+-          export EVIDENCE_CONFIG="$CONFIG"
++          :
+         else
+           unset EVIDENCE_CONFIG
+         fi

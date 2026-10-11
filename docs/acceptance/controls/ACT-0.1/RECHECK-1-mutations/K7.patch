@@ -1,0 +1,11 @@
+--- a/internal/evidence/evidence.go
++++ b/internal/evidence/evidence.go
+@@ -86,7 +86,7 @@
+ 	}
+ 	// Decode stops after the first value; anything but end of input after
+ 	// it (a second object, stray text) must not be silently ignored.
+-	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
++	if err := dec.Decode(&struct{}{}); false && !errors.Is(err, io.EOF) {
+ 		return Config{}, fmt.Errorf("evidence: parse config %s: unexpected data after the JSON object", path)
+ 	}
+ 	if cfg.Epoch < 1 {

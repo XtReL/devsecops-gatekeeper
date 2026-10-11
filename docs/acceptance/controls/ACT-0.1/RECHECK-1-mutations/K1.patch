@@ -1,0 +1,12 @@
+--- a/scripts/evidence-push.sh
++++ b/scripts/evidence-push.sh
+@@ -67,8 +67,7 @@
+       --commit "$COMMIT" \
+       --run-url "$RUN_URL" \
+       --run-id "$RUN_ID" \
+-      --run-attempt "$RUN_ATTEMPT" \
+-      ${config_args[@]+"${config_args[@]}"}
++      --run-attempt "$RUN_ATTEMPT"
+     record_code=$?
+ 
+     if [ "$record_code" -eq 3 ]; then
