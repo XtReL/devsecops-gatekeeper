@@ -1,0 +1,11 @@
+владелец (устно, источник: ACT-0.1-RECHECK-1.sha256, файл не открывался): b41b6e709fab0d060b010810c6a0144c7345c62e363ce51cd0a0b0d8925c2feb  C24/c24-config-input-control.sh
+вычислено по git show origin/acceptance/act-v0 (49552f1ba5260091ca650d551cd49fa78e7fbab6):
+b41b6e709fab0d060b010810c6a0144c7345c62e363ce51cd0a0b0d8925c2feb  C24/c24-config-input-control.sh
+14656d678f8d2f5ad61dd953e40848b816c6136961b051255d8835167771191b  C24/c24-recheck-assert.sh
+72e60e18f7a7581fc82e31aaa725e6d3f4d55886491439263351a7e98384b0bd  C23/c23-config-strict-repro.sh
+b910fa1a4a8f17dd9cda2723593492775892f1590116cb8af8dd682b8000b8e1  C24/custom.json
+c24-config-input-control.sh: MATCH
+SHA256SUMS из ветки:
+C23/c23-config-strict-repro.sh: OK
+C24/c24-recheck-assert.sh: OK
+C24/custom.json: в SHA256SUMS и у владельца хеша нет (данные, содержимое: {"epoch": 2}); sha256 записан выше.

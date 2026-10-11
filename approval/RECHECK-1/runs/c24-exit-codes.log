@@ -1,0 +1,6 @@
+control before exit=0
+control after exit=0
+assert before mode=defect exit=0
+assert before mode=fixed exit=1
+assert after mode=defect exit=1
+assert after mode=fixed exit=0

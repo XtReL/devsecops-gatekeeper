@@ -16,10 +16,14 @@ A. Прочитано содержимое (cat / sed / show / diff)
   go.mod                                        (только diff)
   docs/acceptance/controls/ACT-0.1/SHA256SUMS   (origin/acceptance/act-v0, целиком)
   docs/acceptance/controls/ACT-0.1/C23/c23-config-strict-repro.sh   (origin/acceptance/act-v0, целиком; запущен)
-  docs/acceptance/controls/ACT-0.1/C24/c24-recheck-assert.sh        (origin/acceptance/act-v0, целиком; НЕ запущен)
+  docs/acceptance/controls/ACT-0.1/C24/c24-recheck-assert.sh        (origin/acceptance/act-v0, целиком; в раунде 1 НЕ запускался, в раунде 2 запущен)
 
-B. Хеш вычислен, содержимое не просматривалось, не запускался
-  docs/acceptance/controls/ACT-0.1/C24/c24-config-input-control.sh  (origin/acceptance/act-v0)
+B. Раунд 2 (добавлено)
+  docs/acceptance/controls/ACT-0.1/C24/c24-config-input-control.sh  (origin/acceptance/act-v0, прочитан целиком; запущен после сверки хеша с значением владельца)
+  docs/acceptance/controls/ACT-0.1/C24/custom.json                  (origin/acceptance/act-v0, прочитан целиком; 13 байт, данные)
+  docs/acceptance/controls/ACT-0.1/C24/c24-recheck-assert.sh        (повторно получен из ветки; запущен)
+  docs/acceptance/ACT-0.1-RECHECK-1.sha256  — НЕ открывался: хеш сообщил владелец.
+  Раунд 1: этот скрипт был только захеширован, не просматривался и не запускался.
 
 C. Выполнялись (исходники своего кода — мои проверки)
   approval/RECHECK-1/checks/*.sh, approval/RECHECK-1/run-checks.sh
@@ -33,7 +37,7 @@ D. Только имена (git ls-tree / ls / git diff --stat), содержи�
   cmd/gatekeeper/main_test.go, internal/evidence/evidence_test.go, scripts/evidence-push_test.sh (diff не выводился).
   Список файлов ветки origin/acceptance/act-v0 получен с фильтром grep -v '\.md$' и только по
   пути «ACT-0.1»: имена *.md в нём не выводились. Из показанных имён не открывались:
-  C13/*, C24/custom.json, C24/record-step.sh, C26/validate-mode.sh, C36/*, C37/*, extra-repo-name/*,
+  C13/*, C24/record-step.sh, C26/validate-mode.sh, C36/*, C37/*, extra-repo-name/*,
   run-recheck-1.sh, RECHECK-1-mutations/* (K1..K9, run-mutations.sh — только их строки в SHA256SUMS),
   docs/acceptance/ACT-0.1-RECHECK-1.sha256.
 

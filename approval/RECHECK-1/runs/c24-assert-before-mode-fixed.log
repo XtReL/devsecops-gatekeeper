@@ -1,0 +1,10 @@
+initialised evidence log github.com/octo/r/gatekeeper-evidence/v1/e2 at /tmp/tmp.YP367jt6SD/init
+== case 1: config только по пути cfg/custom.json
+HEAD is now at 81e4a88 init
+gatekeeper record: evidence: open log: filelog: current checkpoint does not verify under this log key: tlog: note has no valid signature from the expected key
+evidence-push: gatekeeper record exited 2, not retrying
+record step exit=1
+== case 2: тот же конфиг ещё и по пути по умолчанию
+evidence-push: pushed
+record step exit=0
+ASSERT FAIL: случай 1: код 1, ожидался 0 (режим fixed)
