@@ -511,13 +511,59 @@ func TestRecordedEntryNeverContainsTestSecretValue(t *testing.T) {
 	}
 }
 
-func TestLoadConfigMissingFileDefaultsToEpochOne(t *testing.T) {
-	cfg, err := LoadConfig(filepath.Join(t.TempDir(), "does-not-exist.json"))
+// ACT-0.1 C23. Epoch 1 for a missing file only when no config path was named
+// at all (empty path) and .gatekeeper/evidence.json does not exist
+// (repositories that predate ADR 0002 have no config).
+func TestLoadConfigNoPathNoFileDefaultsToEpochOne(t *testing.T) {
+	t.Chdir(t.TempDir())
+	cfg, err := LoadConfig("")
 	if err != nil {
-		t.Fatalf("LoadConfig: %v", err)
+		t.Fatalf("LoadConfig(\"\"): %v", err)
 	}
 	if cfg.Epoch != 1 {
-		t.Fatalf("expected epoch 1 for a missing config file, got %d", cfg.Epoch)
+		t.Fatalf("expected epoch 1 for no path and no default file, got %d", cfg.Epoch)
+	}
+}
+
+func TestLoadConfigNoPathUsesDefaultFile(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.MkdirAll(filepath.Dir(DefaultConfigPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(DefaultConfigPath, []byte(`{"epoch": 3}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("LoadConfig(\"\"): %v", err)
+	}
+	if cfg.Epoch != 3 {
+		t.Fatalf("expected epoch 3 from the default file, got %d", cfg.Epoch)
+	}
+}
+
+// A named path must exist: a typo must not silently select epoch 1.
+func TestLoadConfigNamedPathMissingIsAnError(t *testing.T) {
+	t.Chdir(t.TempDir())
+	paths := []string{
+		filepath.Join(t.TempDir(), "does-not-exist.json"),
+		"cfg/evidence.json",
+		".gatekeeper/evidence.jsno",
+	}
+	for _, path := range paths {
+		if cfg, err := LoadConfig(path); err == nil {
+			t.Fatalf("LoadConfig(%q): expected an error for a missing named config, got epoch %d", path, cfg.Epoch)
+		}
+	}
+}
+
+// Naming the default path explicitly is naming it: no fallback to epoch 1.
+func TestLoadConfigExplicitDefaultPathMissingIsAnError(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, path := range []string{DefaultConfigPath, "./" + DefaultConfigPath} {
+		if cfg, err := LoadConfig(path); err == nil {
+			t.Fatalf("LoadConfig(%q): expected an error, got epoch %d", path, cfg.Epoch)
+		}
 	}
 }
 
@@ -548,6 +594,85 @@ func TestLoadConfigRejectsGarbage(t *testing.T) {
 	path := writeConfig(t, `not json`)
 	if _, err := LoadConfig(path); err == nil {
 		t.Fatal("expected an error for a garbage config file")
+	}
+}
+
+// ACT-0.1 C23: json.Decoder.Decode stops after the first value, so without
+// an explicit end-of-input check the trailing data would be ignored.
+func TestLoadConfigRejectsTrailingData(t *testing.T) {
+	cases := map[string]string{
+		"second object": `{"epoch": 2}{"epoch": 5}`,
+		"stray text":    `{"epoch": 2} garbage`,
+		"second value":  "{\"epoch\": 2}\n3",
+	}
+	for name, contents := range cases {
+		t.Run(name, func(t *testing.T) {
+			path := writeConfig(t, contents)
+			if cfg, err := LoadConfig(path); err == nil {
+				t.Fatalf("expected an error for trailing data, got epoch %d", cfg.Epoch)
+			}
+		})
+	}
+}
+
+func TestLoadConfigAcceptsTrailingWhitespace(t *testing.T) {
+	path := writeConfig(t, "{\"epoch\": 2}\n\n  \t\n")
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.Epoch != 2 {
+		t.Fatalf("expected epoch 2, got %d", cfg.Epoch)
+	}
+}
+
+// ACT-0.1 C23. The log is initialised at epoch 1 and valid, so a Record that
+// fell back to epoch 1 for the missing config (the old behaviour) would
+// succeed and append an entry; the test fails on exactly that. The error must
+// also name the config as the reason, not some later failure.
+func TestRecordRejectsMissingNamedConfig(t *testing.T) {
+	pemBytes := genKeyPEM(t)
+	withSigningKey(t, pemBytes)
+	repo := "XtReL/devsecops-gatekeeper"
+	resultPath := writeResult(t, t.TempDir(), nil)
+
+	signer, err := keys.ParseSigner(pemBytes)
+	if err != nil {
+		t.Fatalf("parse signer: %v", err)
+	}
+	_, epoch1Origin := Target(repo, Config{Epoch: 1})
+	logDir := t.TempDir()
+	if _, err := filelog.Init(logDir, epoch1Origin, signer); err != nil {
+		t.Fatalf("init epoch 1 log: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(logDir, "entries", ".gitkeep"), nil, 0o644); err != nil {
+		t.Fatalf("write entries/.gitkeep: %v", err)
+	}
+
+	typo := filepath.Join(t.TempDir(), "typo.json")
+	err = Record(Params{
+		ResultPath: resultPath,
+		Evidence:   logDir,
+		Repo:       repo,
+		Commit:     strings.Repeat("f", 40),
+		RunURL:     "https://github.com/" + repo + "/actions/runs/7",
+		RunID:      "7001",
+		RunAttempt: "1",
+		ConfigPath: typo,
+	})
+	if err == nil {
+		t.Fatal("Record succeeded with a missing named config (silent fallback to epoch 1)")
+	}
+	if !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), "read config "+typo) {
+		t.Fatalf("Record failed, but not because the named config is missing: %v", err)
+	}
+
+	log, err := filelog.Open(logDir, epoch1Origin, signer)
+	if err != nil {
+		t.Fatalf("open log: %v", err)
+	}
+	if size, err := log.Size(); err != nil || size != 0 {
+		t.Fatalf("a rejected Record must not append: size %d, err %v", size, err)
 	}
 }
 

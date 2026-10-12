@@ -11,10 +11,10 @@
 ## 1. `action.yml` в корне
 - `name`: `Gatekeeper Evidence` (уникальность для Marketplace проверяется на этапе 5); `description` ≤ 125 символов; `branding` (`icon: shield`, `color: green`).
 - `runs.using: composite`. Вход `mode` (обязательный): `build` | `scan` | `target` | `record`; неизвестное значение — ошибка.
-- Прочие входы: `source` (по умолчанию `.`), `gatekeeper` (путь к бинарнику), `result` (путь к `result.json`), `evidence` (по умолчанию `evidence`), `config` (по умолчанию `.gatekeeper/evidence.json`).
+- Прочие входы: `source` (по умолчанию `.`), `gatekeeper` (путь к бинарнику), `result` (путь к `result.json`), `evidence` (по умолчанию `evidence`), `config` (по умолчанию пусто: тогда берётся `.gatekeeper/evidence.json`, а при его отсутствии — эпоха 1; заданный путь обязан существовать, иначе ошибка, в том числе для `.gatekeeper/evidence.json`).
 - **`build`:** `actions/setup-go` (по SHA) с `go-version-file: ${{ github.action_path }}/go.mod`, встроенный кэш с `cache-dependency-path: ${{ github.action_path }}/go.sum`; сборка из `$GITHUB_ACTION_PATH`: `CGO_ENABLED=0 GOFLAGS=-mod=readonly go build -trimpath -o "$RUNNER_TEMP/gatekeeper" ./cmd/gatekeeper`. Выход `gatekeeper` — путь к бинарнику. Длительность сборки в секундах — в `$GITHUB_STEP_SUMMARY` строкой `gatekeeper build: N s` (исходные данные для порога ADR 0003).
 - **`scan`:** `chmod +x` бинарника (артефакты не сохраняют бит исполнения), `gatekeeper scan --source … --out "$RUNNER_TEMP/result.json"` с `set +e`; выходы `result` и `code`. Action **не падает** при находках: решение принимает шаблон после выгрузки результата.
-- **`target`:** `chmod +x`, `gatekeeper evidence-target --repo "$GITHUB_REPOSITORY" --config …` → выходы `branch`, `origin`.
+- **`target`:** `chmod +x`, `gatekeeper evidence-target --repo "$GITHUB_REPOSITORY"` (с `--config …` только если вход `config` задан) → выходы `branch`, `origin`.
 - **`record`:** `chmod +x`; пустой `GATEKEEPER_SIGNING_KEY` → ошибка с понятным текстом (без значения); запуск `"$GITHUB_ACTION_PATH/scripts/evidence-push.sh"` с `GATEKEEPER_BIN`, `RESULT_FILE`, `EVIDENCE_DIR`, `EVIDENCE_BRANCH` (из `evidence-target`, вычисляется внутри шага), `REPO`, `COMMIT`, `RUN_URL`, `RUN_ID`, `RUN_ATTEMPT` из контекста через `env`.
 
 ## 2. Dogfooding: `.github/workflows/gatekeeper.yml`

@@ -137,6 +137,22 @@ func runEvidenceInit(args []string) int {
 	return 0
 }
 
+// checkConfigFlag rejects an explicit empty --config: LoadConfig treats ""
+// as "not passed" (default path, missing file means epoch 1), so a passed but
+// empty value must not fall through to that.
+func checkConfigFlag(fs *flag.FlagSet, value string) error {
+	passed := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "config" {
+			passed = true
+		}
+	})
+	if passed && value == "" {
+		return errors.New("--config is empty (omit the flag to use " + evidence.DefaultConfigPath + ")")
+	}
+	return nil
+}
+
 // runEvidenceTarget prints the branch and origin the given epoch config
 // resolves to, for a CI step to capture into $GITHUB_OUTPUT (see
 // docs/tasks/rotation.md and trust-core ADR 0002).
@@ -149,6 +165,10 @@ func runEvidenceTarget(args []string) int {
 	}
 	if *repo == "" {
 		fmt.Fprintln(os.Stderr, "gatekeeper evidence-target: --repo is required")
+		return 2
+	}
+	if err := checkConfigFlag(fs, *config); err != nil {
+		fmt.Fprintf(os.Stderr, "gatekeeper %s: %v\n", fs.Name(), err)
 		return 2
 	}
 
@@ -175,6 +195,10 @@ func runRecord(args []string) int {
 	runAttempt := fs.String("run-attempt", "", "CI run attempt")
 	config := fs.String("config", "", "path to the epoch config (default "+evidence.DefaultConfigPath+")")
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if err := checkConfigFlag(fs, *config); err != nil {
+		fmt.Fprintf(os.Stderr, "gatekeeper %s: %v\n", fs.Name(), err)
 		return 2
 	}
 	if *result == "" || *dir == "" || *repo == "" || *commit == "" || *runID == "" || *runAttempt == "" {

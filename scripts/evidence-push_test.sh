@@ -127,4 +127,62 @@ AUTOCRLF_CLONE="$WORK/autocrlf-clone"
 git clone -q -c core.autocrlf=true --branch gatekeeper-evidence --single-branch "$ORIGIN" "$AUTOCRLF_CLONE"
 "$TRUSTCORE_BIN" verify -log "$AUTOCRLF_CLONE" -origin "github.com/$REPO/gatekeeper-evidence/v1" -log-pub "$PUB" -attester-pub "$PUB"
 
+# ACT-0.1 C24: the action's config input must reach "gatekeeper record".
+# evidence-push.sh gets it as EVIDENCE_CONFIG. The config lives at a
+# non-default path and the working directory has no .gatekeeper/evidence.json,
+# so only an explicit --config can select the epoch-2 log; without it record
+# falls back to epoch 1 and must fail against the epoch-2 log's origin.
+echo "== evidence-push_test: custom config reaches record (epoch 2) =="
+E2_BRANCH="gatekeeper-evidence-e2"
+E2_INIT="$WORK/e2-init"
+git clone -q "$ORIGIN" "$E2_INIT"
+(cd "$E2_INIT" && git checkout --orphan "$E2_BRANCH" -q && git rm -rf . -q >/dev/null 2>&1 || true)
+"$GATEKEEPER_BIN_SRC" evidence-init --evidence "$E2_INIT" --repo "$REPO" --key "$KEY" --epoch 2
+(
+  cd "$E2_INIT"
+  git -c user.name=init -c user.email=init@example.invalid add -A
+  git -c user.name=init -c user.email=init@example.invalid commit -q -m init-e2
+  git push -q origin "$E2_BRANCH"
+)
+E2_EVIDENCE="$WORK/e2-evidence"
+git clone -q --branch "$E2_BRANCH" --single-branch "$ORIGIN" "$E2_EVIDENCE"
+
+CFG_WS="$WORK/cfg-ws"
+mkdir -p "$CFG_WS/cfg"
+printf '{"epoch": 2}\n' >"$CFG_WS/cfg/custom.json"
+
+run_push_e2() {
+  # $1 - EVIDENCE_CONFIG value ("" = unset); runs from $CFG_WS, which has
+  # no .gatekeeper/evidence.json.
+  (
+    cd "$CFG_WS"
+    if [ -n "$1" ]; then export EVIDENCE_CONFIG="$1"; else unset EVIDENCE_CONFIG; fi
+    GATEKEEPER_SIGNING_KEY="$(cat "$KEY")" \
+    GATEKEEPER_BIN="$GATEKEEPER_BIN_SRC" \
+    RESULT_FILE="$RESULT" \
+    EVIDENCE_DIR="$E2_EVIDENCE" \
+    EVIDENCE_BRANCH="$E2_BRANCH" \
+    REPO="$REPO" \
+    COMMIT="$commit_a" \
+    RUN_URL="https://example.invalid/actions/runs/3001" \
+    RUN_ID="3001" \
+    RUN_ATTEMPT="1" \
+    "$PUSH_SCRIPT"
+  )
+}
+
+if run_push_e2 "" >"$WORK/e2-noconfig.log" 2>&1; then
+  echo "FAIL: record against an epoch-2 log succeeded without EVIDENCE_CONFIG" >&2
+  exit 1
+fi
+[ "$(entry_count "$E2_EVIDENCE")" -eq 0 ] || { echo "FAIL: a failed record left an entry" >&2; exit 1; }
+
+run_push_e2 "cfg/custom.json"
+[ "$(entry_count "$E2_EVIDENCE")" -eq 1 ] || { echo "FAIL: expected 1 epoch-2 entry with EVIDENCE_CONFIG" >&2; exit 1; }
+"$TRUSTCORE_BIN" verify -log "$E2_EVIDENCE" -origin "github.com/$REPO/gatekeeper-evidence/v1/e2" -log-pub "$PUB" -attester-pub "$PUB"
+
+# The other half, the action's record step handing its config input to this
+# script as EVIDENCE_CONFIG (only when the input is set), is exercised by
+# cmd/gatekeeper/config_test.go against the real action.yml.
+
 echo "evidence-push_test: OK"
